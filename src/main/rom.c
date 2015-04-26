@@ -443,7 +443,7 @@ void romdatabase_open(void)
             md5_byte_t md5[16];
             if (!parse_hex(l.name, md5, 16))
             {
-                DebugMessage(M64MSG_WARNING, "ROM Database: Invalid MD5 on line %i", lineno);
+                DebugMessage(M64MSG_WARNING, "ROM Database: Invalid MD5 on line %i: %s %s", lineno, l.name, md5);
                 search = NULL;
                 continue;
             }
