@@ -42,6 +42,8 @@
 #include "rom.h"
 #include "util.h"
 
+#include "api/callbacks.h"
+
 /**********************
      File utilities
  **********************/
@@ -374,14 +376,20 @@ int parse_hex(const char *str, unsigned char *output, size_t output_size)
         {
             unsigned char h = char2hex(*str++);
             if (h == 0xFF)
+            {
+                DebugMessage(M64MSG_INFO, "parse_hex return 0 (1)");
                 return 0;
+            }
 
             output[i] = (output[i] << 4) | h;
         }
     }
 
     if (*str != '\0')
+    {
+        DebugMessage(M64MSG_INFO, "parse_hex return 0 (2)");
         return 0;
+    }
 
     return 1;
 }
