@@ -355,11 +355,14 @@ int string_to_int(const char *str, int *result)
     return 1;
 }
 
+static char my_tolower(char c)
+{
+    return (c >='A' && c<='Z') ? (c + 32) : (c);
+}
+
 static unsigned char char2hex(char c)
 {
-    DebugMessage(M64MSG_INFO, "c-before: %c %d", c, c);
-    c = tolower(c);
-    DebugMessage(M64MSG_INFO, "c: %c %d", c, c);
+    c = my_tolower(c);
     if(c >= '0' && c <= '9')
         return c - '0';
     else if(c >= 'a' && c <= 'f')
@@ -377,22 +380,15 @@ int parse_hex(const char *str, unsigned char *output, size_t output_size)
         for (j = 0; j < 2; j++)
         {
             unsigned char h = char2hex(*str++);
-            DebugMessage(M64MSG_INFO, "*str: %c", *str);
             if (h == 0xFF)
-            {
-                DebugMessage(M64MSG_INFO, "parse_hex return 0 (1)");
                 return 0;
-            }
 
             output[i] = (output[i] << 4) | h;
         }
     }
 
     if (*str != '\0')
-    {
-        DebugMessage(M64MSG_INFO, "parse_hex return 0 (2)");
         return 0;
-    }
 
     return 1;
 }
