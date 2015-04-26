@@ -358,6 +358,7 @@ int string_to_int(const char *str, int *result)
 static unsigned char char2hex(char c)
 {
     c = tolower(c);
+    DebugMessage(M64MSG_INFO, "c: %c %d", c, c);
     if(c >= '0' && c <= '9')
         return c - '0';
     else if(c >= 'a' && c <= 'f')
