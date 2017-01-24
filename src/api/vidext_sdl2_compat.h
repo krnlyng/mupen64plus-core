@@ -21,6 +21,7 @@
 
 #include <SDL_config.h>
 #include <SDL_surface.h>
+#include <SDL_hints.h>
 
 #ifndef USE_GLES
 
