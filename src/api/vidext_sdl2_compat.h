@@ -388,7 +388,7 @@ SDL_SetVideoMode(int width, int height, int bpp, Uint32 flags)
         initialized_video = 1;
     }
 
-    Set_Hint(SDL_HINT_QTWAYLAND_CONTENT_ORIENTATION, "landscape");
+    SDL_SetHint(SDL_HINT_QTWAYLAND_CONTENT_ORIENTATION, "landscape");
 
     SDL_GetDesktopDisplayMode(display, &desktop_mode);
 
