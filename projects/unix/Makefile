@@ -331,8 +331,7 @@ ifeq ($(origin SDL_CFLAGS) $(origin SDL_LDLIBS), undefined undefined)
     endif
   endif
   SDL_CFLAGS  += $(shell $(SDL_CONFIG) --cflags)
-  SDL_LDLIBS += $(shell $(SDL_CONFIG) --libs)
-endif
+  SDL_LDLIBS += $(shell $(SDL_CONFIG) --libs) -lwayland
 CFLAGS += $(SDL_CFLAGS)
 LDLIBS += $(SDL_LDLIBS)
 
