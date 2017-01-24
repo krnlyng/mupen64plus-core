@@ -22,6 +22,7 @@
 #include <SDL_config.h>
 #include <SDL_surface.h>
 #include <SDL_hints.h>
+#include <SDL_syswm.h>
 
 #include <wayland-client-protocol.h>
 
