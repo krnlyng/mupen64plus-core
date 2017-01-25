@@ -487,15 +487,15 @@ SDL_SetVideoMode(int width, int height, int bpp, Uint32 flags)
         }
         SDL_VideoSurface->flags |= surface_flags;
         SDL_PublicSurface = SDL_VideoSurface;
-
+#if 0
         SDL_SysWMinfo info;
 
         SDL_VERSION(&info.version);
 
         SDL_GetWindowWMInfo(SDL_VideoWindow, &info);
 
-        wl_surface_set_buffer_transform(info.info.wl.surface, WL_OUTPUT_TRANSFORM_180);
-
+        wl_surface_set_buffer_transform(info.info.wl.surface, WL_OUTPUT_TRANSFORM_270);
+#endif
         return SDL_PublicSurface;
     }
 
