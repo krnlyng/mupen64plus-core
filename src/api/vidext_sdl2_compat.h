@@ -494,7 +494,7 @@ SDL_SetVideoMode(int width, int height, int bpp, Uint32 flags)
 
         SDL_GetWindowWMInfo(SDL_VideoWindow, &info);
 
-        wl_surface_set_buffer_transform(info.info.wl.surface, WL_OUTPUT_TRANSFORM_270);
+        wl_surface_set_buffer_transform(info.info.wl.surface, WL_OUTPUT_TRANSFORM_180);
 
         return SDL_PublicSurface;
     }
