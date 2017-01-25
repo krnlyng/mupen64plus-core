@@ -454,14 +454,6 @@ SDL_SetVideoMode(int width, int height, int bpp, Uint32 flags)
     }
     SDL_SetWindowIcon(SDL_VideoWindow, SDL_VideoIcon);
 
-    SDL_SysWMinfo info;
-
-    SDL_VERSION(&info.version);
-
-    SDL_GetWindowWMInfo(SDL_VideoWindow, &info);
-
-    wl_surface_set_buffer_transform(info.info.wl.surface, WL_OUTPUT_TRANSFORM_270);
-
     window_flags = SDL_GetWindowFlags(SDL_VideoWindow);
     surface_flags = 0;
     if (window_flags & SDL_WINDOW_FULLSCREEN) {
@@ -497,6 +489,14 @@ SDL_SetVideoMode(int width, int height, int bpp, Uint32 flags)
         SDL_PublicSurface = SDL_VideoSurface;
         return SDL_PublicSurface;
     }
+
+    SDL_SysWMinfo info;
+
+    SDL_VERSION(&info.version);
+
+    SDL_GetWindowWMInfo(SDL_VideoWindow, &info);
+
+    wl_surface_set_buffer_transform(info.info.wl.surface, WL_OUTPUT_TRANSFORM_270);
 
     /* We're finally done! */
     return NULL;
