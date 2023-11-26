@@ -1837,7 +1837,7 @@ static void remove_hash(u_int vaddr)
 /**** Interpreted opcodes ****/
 #define UPDATE_COUNT_IN \
   struct r4300_core* r4300 = &g_dev.r4300; \
-  struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state; \
+  struct recompiler_hot_state* state = &r4300->recompiler_hot_state; \
   state->cycle_count += count; \
   state->pending_exception = 0;
 
@@ -1847,7 +1847,7 @@ static void remove_hash(u_int vaddr)
 void* SYSCALL_new(void)
 {
     struct r4300_core* r4300 = &g_dev.r4300;
-    struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state;
+    struct recompiler_hot_state* state = &r4300->recompiler_hot_state;
     r4300->delay_slot = 0;
     cached_interp_SYSCALL();
     return get_addr_ht(state->pcaddr);
@@ -1856,7 +1856,7 @@ void* SYSCALL_new(void)
 void* ERET_new(void)
 {
     struct r4300_core* r4300 = &g_dev.r4300;
-    struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state;
+    struct recompiler_hot_state* state = &r4300->recompiler_hot_state;
 
     cp0_update_count(r4300);
     if (state->cp0_regs[CP0_STATUS_REG] & CP0_STATUS_ERL)
@@ -2328,7 +2328,7 @@ static void tlb_speed_hacks()
     #endif
     if(addr) {
       for(n=0x7F000;n<0x80000;n++) {
-        g_dev.r4300.new_dynarec_hot_state.memory_map[n]=(((uintptr_t)(rom_addr+addr-0x7F000000))>>2)|WRITE_PROTECT;
+        g_dev.r4300.recompiler_hot_state.memory_map[n]=(((uintptr_t)(rom_addr+addr-0x7F000000))>>2)|WRITE_PROTECT;
       }
     }
   }
@@ -2347,13 +2347,13 @@ u_int verify_dirty(struct ll_entry * head)
   }
   else if((signed int)head->start>=(signed int)0xC0000000) {
     unsigned int page=head->start>>12;
-    uintptr_t map_value=g_dev.r4300.new_dynarec_hot_state.memory_map[page];
+    uintptr_t map_value=g_dev.r4300.recompiler_hot_state.memory_map[page];
 
     if((intptr_t)map_value<(intptr_t)0)
       return head->vaddr;
 
     while(page<((head->start+head->length-1)>>12)) {
-      if((g_dev.r4300.new_dynarec_hot_state.memory_map[++page]<<2)!=(map_value<<2))
+      if((g_dev.r4300.recompiler_hot_state.memory_map[++page]<<2)!=(map_value<<2))
         return head->vaddr;
     }
     source=(void*)(head->start+(map_value<<2));
@@ -2513,11 +2513,11 @@ static struct ll_entry *get_dirty(struct r4300_core* r4300,u_int vaddr,u_int fla
       if((((uintptr_t)head->addr-(uintptr_t)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
         if(verify_dirty(head)==0) {
           r4300->cached_interp.invalid_code[vaddr>>12]=0;
-          r4300->new_dynarec_hot_state.memory_map[vaddr>>12]|=WRITE_PROTECT;
+          r4300->recompiler_hot_state.memory_map[vaddr>>12]|=WRITE_PROTECT;
           if(vpage<2048) {
             if(r4300->cp0.tlb.LUT_r[vaddr>>12]) {
               r4300->cached_interp.invalid_code[r4300->cp0.tlb.LUT_r[vaddr>>12]>>12]=0;
-              r4300->new_dynarec_hot_state.memory_map[r4300->cp0.tlb.LUT_r[vaddr>>12]>>12]|=WRITE_PROTECT;
+              r4300->recompiler_hot_state.memory_map[r4300->cp0.tlb.LUT_r[vaddr>>12]>>12]|=WRITE_PROTECT;
             }
             restore_candidate[vpage>>3]|=1<<(vpage&7);
           }
@@ -2584,10 +2584,10 @@ void *dynamic_linker(void * src, u_int vaddr)
   if(r==0) return dynamic_linker(src,vaddr);
   // Execute in unmapped page, generate pagefault execption
   assert(r4300->cp0.tlb.LUT_r[(vaddr&~1) >> 12] == 0);
-  assert((intptr_t)r4300->new_dynarec_hot_state.memory_map[(vaddr&~1) >> 12] < 0);
+  assert((intptr_t)r4300->recompiler_hot_state.memory_map[(vaddr&~1) >> 12] < 0);
   r4300->delay_slot = vaddr&1;
   TLB_refill_exception(r4300, vaddr&~1, 2);
-  return get_addr_ht(r4300->new_dynarec_hot_state.pcaddr);
+  return get_addr_ht(r4300->recompiler_hot_state.pcaddr);
 }
 
 void *dynamic_linker_ds(void * src, u_int vaddr)
@@ -2642,10 +2642,10 @@ void *dynamic_linker_ds(void * src, u_int vaddr)
   if(r==0) return dynamic_linker_ds(src,vaddr);
   // Execute in unmapped page, generate pagefault execption
   assert(r4300->cp0.tlb.LUT_r[(vaddr&~1) >> 12] == 0);
-  assert((intptr_t)r4300->new_dynarec_hot_state.memory_map[(vaddr&~1) >> 12] < 0);
+  assert((intptr_t)r4300->recompiler_hot_state.memory_map[(vaddr&~1) >> 12] < 0);
   r4300->delay_slot = vaddr&1;
   TLB_refill_exception(r4300, vaddr&~1, 2);
-  return get_addr_ht(r4300->new_dynarec_hot_state.pcaddr);
+  return get_addr_ht(r4300->recompiler_hot_state.pcaddr);
 }
 
 // Get address from virtual address
@@ -2680,10 +2680,10 @@ void *get_addr(u_int vaddr)
   if(r==0) return get_addr(vaddr);
   // Execute in unmapped page, generate pagefault execption
   assert(r4300->cp0.tlb.LUT_r[(vaddr&~1) >> 12] == 0);
-  assert((intptr_t)r4300->new_dynarec_hot_state.memory_map[(vaddr&~1) >> 12] < 0);
+  assert((intptr_t)r4300->recompiler_hot_state.memory_map[(vaddr&~1) >> 12] < 0);
   r4300->delay_slot = vaddr&1;
   TLB_refill_exception(r4300, vaddr&~1, 2);
-  return get_addr_ht(r4300->new_dynarec_hot_state.pcaddr);
+  return get_addr_ht(r4300->recompiler_hot_state.pcaddr);
 }
 
 // Look up address in hash table first
@@ -2731,10 +2731,10 @@ void *get_addr_32(u_int vaddr,u_int flags)
   if(r==0) return get_addr(vaddr);
   // Execute in unmapped page, generate pagefault execption
   assert(r4300->cp0.tlb.LUT_r[(vaddr&~1) >> 12] == 0);
-  assert((intptr_t)r4300->new_dynarec_hot_state.memory_map[(vaddr&~1) >> 12] < 0);
+  assert((intptr_t)r4300->recompiler_hot_state.memory_map[(vaddr&~1) >> 12] < 0);
   r4300->delay_slot = vaddr&1;
   TLB_refill_exception(r4300, vaddr&~1, 2);
-  return get_addr_ht(r4300->new_dynarec_hot_state.pcaddr);
+  return get_addr_ht(r4300->recompiler_hot_state.pcaddr);
 }
 
 // Check if an address is already compiled
@@ -2833,8 +2833,8 @@ void invalidate_block(u_int block)
     }
     if((signed int)head->vaddr>=(signed int)0xC0000000) {
       assert(page<2048);
-      assert(g_dev.r4300.new_dynarec_hot_state.memory_map[head->vaddr>>12]!=(uintptr_t)-1);
-      u_int paddr=head->vaddr+(g_dev.r4300.new_dynarec_hot_state.memory_map[head->vaddr>>12]<<2)-(uintptr_t)g_dev.rdram.dram;
+      assert(g_dev.r4300.recompiler_hot_state.memory_map[head->vaddr>>12]!=(uintptr_t)-1);
+      u_int paddr=head->vaddr+(g_dev.r4300.recompiler_hot_state.memory_map[head->vaddr>>12]<<2)-(uintptr_t)g_dev.rdram.dram;
       start=(paddr-(head->vaddr-head->start))>>12;
       end=(paddr+((head->start+head->length)-head->vaddr)-1)>>12;
       assert(start<2048&&end<2048);
@@ -2875,14 +2875,14 @@ void invalidate_block(u_int block)
   // If there is a valid TLB entry for this page, remove write protect
   if(g_dev.r4300.cp0.tlb.LUT_w[block]) {
     assert(g_dev.r4300.cp0.tlb.LUT_r[block]==g_dev.r4300.cp0.tlb.LUT_w[block]);
-    g_dev.r4300.new_dynarec_hot_state.memory_map[block]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((g_dev.r4300.cp0.tlb.LUT_w[block]&0xFFFFF000)-0x80000000)-(block<<12))>>2;
+    g_dev.r4300.recompiler_hot_state.memory_map[block]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((g_dev.r4300.cp0.tlb.LUT_w[block]&0xFFFFF000)-0x80000000)-(block<<12))>>2;
     u_int real_block=g_dev.r4300.cp0.tlb.LUT_w[block]>>12;
     g_dev.r4300.cached_interp.invalid_code[real_block]=1;
-    if(real_block>=0x80000&&real_block<0x80800) g_dev.r4300.new_dynarec_hot_state.memory_map[real_block]=((uintptr_t)g_dev.rdram.dram-(uintptr_t)0x80000000)>>2;
+    if(real_block>=0x80000&&real_block<0x80800) g_dev.r4300.recompiler_hot_state.memory_map[real_block]=((uintptr_t)g_dev.rdram.dram-(uintptr_t)0x80000000)>>2;
   }
-  else if(block>=0x80000&&block<0x80800) g_dev.r4300.new_dynarec_hot_state.memory_map[block]=((uintptr_t)g_dev.rdram.dram-(uintptr_t)0x80000000)>>2;
+  else if(block>=0x80000&&block<0x80800) g_dev.r4300.recompiler_hot_state.memory_map[block]=((uintptr_t)g_dev.rdram.dram-(uintptr_t)0x80000000)>>2;
   #ifdef USE_MINI_HT
-  memset(g_dev.r4300.new_dynarec_hot_state.mini_ht,-1,sizeof(g_dev.r4300.new_dynarec_hot_state.mini_ht));
+  memset(g_dev.r4300.recompiler_hot_state.mini_ht,-1,sizeof(g_dev.r4300.recompiler_hot_state.mini_ht));
   #endif
 }
 
@@ -2904,16 +2904,16 @@ static void invalidate_all_pages(void)
   cache_flush((char *)base_addr_rx,(char *)base_addr_rx+(1<<TARGET_SIZE_2));
   #endif
   #ifdef USE_MINI_HT
-  memset(g_dev.r4300.new_dynarec_hot_state.mini_ht,-1,sizeof(g_dev.r4300.new_dynarec_hot_state.mini_ht));
+  memset(g_dev.r4300.recompiler_hot_state.mini_ht,-1,sizeof(g_dev.r4300.recompiler_hot_state.mini_ht));
   #endif
   // TLB
   for(page=0;page<0x100000;page++) {
     if(g_dev.r4300.cp0.tlb.LUT_r[page]) {
-      g_dev.r4300.new_dynarec_hot_state.memory_map[page]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((g_dev.r4300.cp0.tlb.LUT_r[page]&0xFFFFF000)-0x80000000)-(page<<12))>>2;
+      g_dev.r4300.recompiler_hot_state.memory_map[page]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((g_dev.r4300.cp0.tlb.LUT_r[page]&0xFFFFF000)-0x80000000)-(page<<12))>>2;
       if(!g_dev.r4300.cp0.tlb.LUT_w[page]||!g_dev.r4300.cached_interp.invalid_code[page])
-        g_dev.r4300.new_dynarec_hot_state.memory_map[page]|=WRITE_PROTECT; // Write protect
+        g_dev.r4300.recompiler_hot_state.memory_map[page]|=WRITE_PROTECT; // Write protect
     }
-    else g_dev.r4300.new_dynarec_hot_state.memory_map[page]=(uintptr_t)-1;
+    else g_dev.r4300.recompiler_hot_state.memory_map[page]=(uintptr_t)-1;
     if(page==0x80000) page=0xC0000;
   }
   tlb_speed_hacks();
@@ -2968,13 +2968,13 @@ void clean_blocks(u_int page)
             }
           }
           else if((signed int)head->vaddr>=(signed int)0xC0000000) {
-            uintptr_t map_value=g_dev.r4300.new_dynarec_hot_state.memory_map[head->vaddr>>12];
+            uintptr_t map_value=g_dev.r4300.recompiler_hot_state.memory_map[head->vaddr>>12];
             start=head->start>>12;
             end=(head->start+head->length-1)>>12;
             for(i=start;i<=end;i++) {
               inv|=g_dev.r4300.cached_interp.invalid_code[i];
-              assert((g_dev.r4300.new_dynarec_hot_state.memory_map[i]<<2)==(map_value<<2)); //mapping was already checked in verify_dirty
-              j=(((uintptr_t)i<<12)+(uintptr_t)(g_dev.r4300.new_dynarec_hot_state.memory_map[i]<<2)-(uintptr_t)g_dev.rdram.dram+(uintptr_t)0x80000000)>>12;
+              assert((g_dev.r4300.recompiler_hot_state.memory_map[i]<<2)==(map_value<<2)); //mapping was already checked in verify_dirty
+              j=(((uintptr_t)i<<12)+(uintptr_t)(g_dev.r4300.recompiler_hot_state.memory_map[i]<<2)-(uintptr_t)g_dev.rdram.dram+(uintptr_t)0x80000000)>>12;
               inv|=g_dev.r4300.cached_interp.invalid_code[j];
             }
           }
@@ -3011,7 +3011,7 @@ void clean_blocks(u_int page)
 void* cop1_unusable(void)
 {
     struct r4300_core* r4300 = &g_dev.r4300;
-    struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state;
+    struct recompiler_hot_state* state = &r4300->recompiler_hot_state;
     r4300->delay_slot = state->pcaddr & 1;
     state->pcaddr &= ~1;
     state->cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE1;
@@ -3022,7 +3022,7 @@ void* cop1_unusable(void)
 void dynarec_gen_interrupt(void)
 {
     struct r4300_core* r4300 = &g_dev.r4300;
-    struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state;
+    struct recompiler_hot_state* state = &r4300->recompiler_hot_state;
     cp0_update_count(r4300);
     uint32_t page = ((state->cp0_regs[CP0_COUNT_REG]>>19)&0x1fc);
     unsigned int *candidate = (unsigned int *)&restore_candidate[page];
@@ -4526,7 +4526,7 @@ static void do_ccstub(int n)
   {
     // Save PC as return address
     emit_movimm(stubs[n][5],0);
-    emit_writeword(0,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.pcaddr);
+    emit_writeword(0,(intptr_t)&g_dev.r4300.recompiler_hot_state.pcaddr);
   }
   else
   {
@@ -4707,7 +4707,7 @@ static void do_ccstub(int n)
           emit_cmovne_reg(alt,addr);
         }
       }
-      emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.pcaddr);
+      emit_writeword(addr,(intptr_t)&g_dev.r4300.recompiler_hot_state.pcaddr);
     }
     else
     if(itype[i]==RJUMP)
@@ -4716,7 +4716,7 @@ static void do_ccstub(int n)
       if((rs1[i]==rt1[i+1]||rs1[i]==rt2[i+1])&&(rs1[i]!=0)) {
         r=get_reg(branch_regs[i].regmap,RTEMP);
       }
-      emit_writeword(r,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.pcaddr);
+      emit_writeword(r,(intptr_t)&g_dev.r4300.recompiler_hot_state.pcaddr);
     }
     else {DebugMessage(M64MSG_ERROR, "Unknown branch type in do_ccstub");exit(1);}
   }
@@ -4741,7 +4741,7 @@ static void do_ccstub(int n)
         stubs[n][2]=jump_vaddr_reg[0];
       }
 #endif
-      emit_readword((intptr_t)&g_dev.r4300.new_dynarec_hot_state.pcaddr,r);
+      emit_readword((intptr_t)&g_dev.r4300.recompiler_hot_state.pcaddr,r);
     }
   }else if(stubs[n][6]==NOTTAKEN) {
     if(i<slen-2) load_needed_regs(branch_regs[i].regmap,regmap_pre[i+2]);
@@ -4801,7 +4801,7 @@ static void do_readstub(int n)
   }
 
   assert(addr>=0);
-  emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+  emit_writeword(addr,(intptr_t)&g_dev.r4300.recompiler_hot_state.address);
 
   intptr_t ftable=0;
   if(type==LOADB_STUB||type==LOADBU_STUB)
@@ -4816,29 +4816,29 @@ static void do_readstub(int n)
   {
     assert(rt>=0);
     ftable=(intptr_t)LWL_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==LOADWR_STUB)
   {
     assert(rt>=0);
     ftable=(intptr_t)LWR_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==LOADDL_STUB)
   {
     assert(rt>=0);
     assert(rth>=0);
     ftable=(intptr_t)LDL_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword);
-    emit_writeword(rth,((intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword)+4);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wdword);
+    emit_writeword(rth,((intptr_t)&g_dev.r4300.recompiler_hot_state.wdword)+4);
   }
   else if(type==LOADDR_STUB)
   {
     assert(rt>=0);
     assert(rth>=0);
     ftable=(intptr_t)LDR_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword);
-    emit_writeword(rth,((intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword)+4);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wdword);
+    emit_writeword(rth,((intptr_t)&g_dev.r4300.recompiler_hot_state.wdword)+4);
   }
 
   int cc=get_reg(i_regmap,CCREG);
@@ -4862,7 +4862,7 @@ static void do_readstub(int n)
 
   restore_regs(reglist);
 
-  emit_cmpmem_imm((intptr_t)&g_dev.r4300.new_dynarec_hot_state.pending_exception,0);
+  emit_cmpmem_imm((intptr_t)&g_dev.r4300.recompiler_hot_state.pending_exception,0);
   intptr_t jaddr=(intptr_t)out;
   emit_jeq(0);
 
@@ -4874,20 +4874,20 @@ static void do_readstub(int n)
 
   if(rt>=0) {
     if(type==LOADB_STUB)
-      emit_movsbl((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword,rt);
+      emit_movsbl((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword,rt);
     else if(type==LOADBU_STUB)
-      emit_movzbl((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword,rt);
+      emit_movzbl((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword,rt);
     else if(type==LOADH_STUB)
-      emit_movswl((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword,rt);
+      emit_movswl((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword,rt);
     else if(type==LOADHU_STUB)
-      emit_movzwl((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword,rt);
+      emit_movzwl((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword,rt);
     else if(type==LOADW_STUB||type==LOADWU_STUB||type==LOADWL_STUB||type==LOADWR_STUB) {
-      emit_readword((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword,rt);
+      emit_readword((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword,rt);
       if(type==LOADWU_STUB) emit_zeroreg(rth);
     }
     else if(type==LOADD_STUB||type==LOADDL_STUB||type==LOADDR_STUB) {
-      emit_readword((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword,rt);
-      if(rth>=0) emit_readword((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword+4,rth);
+      emit_readword((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword,rt);
+      if(rth>=0) emit_readword((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword+4,rth);
     }
   }
   emit_jmp(stubs[n][2]); // return address
@@ -4901,12 +4901,12 @@ static void inline_readstub(int type, int i, u_int addr_const, char addr, struct
 
 #if NEW_DYNAREC <= NEW_DYNAREC_X64
   if(addr_const)
-    emit_writeword_imm(addr_const,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+    emit_writeword_imm(addr_const,(intptr_t)&g_dev.r4300.recompiler_hot_state.address);
   else
 #endif
   {
     assert(addr>=0);
-    emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+    emit_writeword(addr,(intptr_t)&g_dev.r4300.recompiler_hot_state.address);
   }
 
   intptr_t ftable=0;
@@ -4922,29 +4922,29 @@ static void inline_readstub(int type, int i, u_int addr_const, char addr, struct
   {
     assert(rt>=0);
     ftable=(intptr_t)LWL_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==LOADWR_STUB)
   {
     assert(rt>=0);
     ftable=(intptr_t)LWR_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==LOADDL_STUB)
   {
     assert(rt>=0);
     assert(rth>=0);
     ftable=(intptr_t)LDL_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword);
-    emit_writeword(rth,((intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword)+4);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wdword);
+    emit_writeword(rth,((intptr_t)&g_dev.r4300.recompiler_hot_state.wdword)+4);
   }
   else if(type==LOADDR_STUB)
   {
     assert(rt>=0);
     assert(rth>=0);
     ftable=(intptr_t)LDR_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword);
-    emit_writeword(rth,((intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword)+4);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wdword);
+    emit_writeword(rth,((intptr_t)&g_dev.r4300.recompiler_hot_state.wdword)+4);
   }
 
   int cc=get_reg(i_regs->regmap,CCREG);
@@ -4973,7 +4973,7 @@ static void inline_readstub(int type, int i, u_int addr_const, char addr, struct
     // been enabled and the address is outside the range 80000000..BFFFFFFF
     // Write out the registers so the pagefault can be handled.  This is
     // a very rare case and likely represents a bug.
-    emit_cmpmem_imm((intptr_t)&g_dev.r4300.new_dynarec_hot_state.pending_exception,0);
+    emit_cmpmem_imm((intptr_t)&g_dev.r4300.recompiler_hot_state.pending_exception,0);
     intptr_t jaddr=(intptr_t)out;
     emit_jeq(0);
 
@@ -4986,20 +4986,20 @@ static void inline_readstub(int type, int i, u_int addr_const, char addr, struct
 
   if(rt>=0) {
     if(type==LOADB_STUB)
-      emit_movsbl((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword,rt);
+      emit_movsbl((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword,rt);
     else if(type==LOADBU_STUB)
-      emit_movzbl((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword,rt);
+      emit_movzbl((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword,rt);
     else if(type==LOADH_STUB)
-      emit_movswl((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword,rt);
+      emit_movswl((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword,rt);
     else if(type==LOADHU_STUB)
-      emit_movzwl((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword,rt);
+      emit_movzwl((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword,rt);
     else if(type==LOADW_STUB||type==LOADWU_STUB||type==LOADWL_STUB||type==LOADWR_STUB) {
-      emit_readword((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword,rt);
+      emit_readword((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword,rt);
       if(type==LOADWU_STUB) emit_zeroreg(rth);
     }
     else if(type==LOADD_STUB||type==LOADDL_STUB||type==LOADDR_STUB) {
-      emit_readword((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword,rt);
-      if(rth>=0) emit_readword((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rdword+4,rth);
+      emit_readword((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword,rt);
+      if(rth>=0) emit_readword((intptr_t)&g_dev.r4300.recompiler_hot_state.rdword+4,rth);
     }
   }
 }
@@ -5026,43 +5026,43 @@ static void do_writestub(int n)
   }
   assert(addr>=0);
   assert(rt>=0);
-  emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+  emit_writeword(addr,(intptr_t)&g_dev.r4300.recompiler_hot_state.address);
 
   intptr_t ftable=0;
   if(type==STOREB_STUB){
     ftable=(intptr_t)write_byte_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==STOREH_STUB){
     ftable=(intptr_t)write_hword_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==STOREW_STUB){
     ftable=(intptr_t)write_word_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==STORED_STUB){
     ftable=(intptr_t)write_dword_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword);
-    emit_writeword(r?rth:rt,((intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword)+4);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wdword);
+    emit_writeword(r?rth:rt,((intptr_t)&g_dev.r4300.recompiler_hot_state.wdword)+4);
   }
   else if(type==STOREWL_STUB){
     ftable=(intptr_t)SWL_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==STOREWR_STUB){
     ftable=(intptr_t)SWR_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==STOREDL_STUB){
     ftable=(intptr_t)SDL_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword);
-    emit_writeword(r?rth:rt,((intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword)+4);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wdword);
+    emit_writeword(r?rth:rt,((intptr_t)&g_dev.r4300.recompiler_hot_state.wdword)+4);
   }
   else if(type==STOREDR_STUB){
     ftable=(intptr_t)SDR_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword);
-    emit_writeword(r?rth:rt,((intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword)+4);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wdword);
+    emit_writeword(r?rth:rt,((intptr_t)&g_dev.r4300.recompiler_hot_state.wdword)+4);
   }
 
   int cc=get_reg(i_regmap,CCREG);
@@ -5086,7 +5086,7 @@ static void do_writestub(int n)
 
   restore_regs(reglist);
 
-  emit_cmpmem_imm((intptr_t)&g_dev.r4300.new_dynarec_hot_state.pending_exception,0);
+  emit_cmpmem_imm((intptr_t)&g_dev.r4300.recompiler_hot_state.pending_exception,0);
   intptr_t jaddr=(intptr_t)out;
   emit_jeq(0);
 
@@ -5111,49 +5111,49 @@ static void inline_writestub(int type, int i, u_int addr_const, char addr, struc
 
 #if NEW_DYNAREC <= NEW_DYNAREC_X64
   if(addr_const)
-    emit_writeword_imm(addr_const,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+    emit_writeword_imm(addr_const,(intptr_t)&g_dev.r4300.recompiler_hot_state.address);
   else
 #endif
   {
     assert(addr>=0);
-    emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+    emit_writeword(addr,(intptr_t)&g_dev.r4300.recompiler_hot_state.address);
   }
 
   intptr_t ftable=0;
   if(type==STOREB_STUB){
     ftable=(intptr_t)write_byte_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==STOREH_STUB){
     ftable=(intptr_t)write_hword_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==STOREW_STUB){
     ftable=(intptr_t)write_word_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==STORED_STUB){
     ftable=(intptr_t)write_dword_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword);
-    emit_writeword(target?rth:rt,((intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword)+4);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wdword);
+    emit_writeword(target?rth:rt,((intptr_t)&g_dev.r4300.recompiler_hot_state.wdword)+4);
   }
   else if(type==STOREWL_STUB){
     ftable=(intptr_t)SWL_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==STOREWR_STUB){
     ftable=(intptr_t)SWR_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wword);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wword);
   }
   else if(type==STOREDL_STUB){
     ftable=(intptr_t)SDL_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword);
-    emit_writeword(target?rth:rt,((intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword)+4);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wdword);
+    emit_writeword(target?rth:rt,((intptr_t)&g_dev.r4300.recompiler_hot_state.wdword)+4);
   }
   else if(type==STOREDR_STUB){
     ftable=(intptr_t)SDR_new;
-    emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword);
-    emit_writeword(target?rth:rt,((intptr_t)&g_dev.r4300.new_dynarec_hot_state.wdword)+4);
+    emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.wdword);
+    emit_writeword(target?rth:rt,((intptr_t)&g_dev.r4300.recompiler_hot_state.wdword)+4);
   }
 
   int cc=get_reg(i_regs->regmap,CCREG);
@@ -5182,7 +5182,7 @@ static void inline_writestub(int type, int i, u_int addr_const, char addr, struc
     // been enabled and the address is outside the range 80000000..BFFFFFFF
     // Write out the registers so the pagefault can be handled.  This is
     // a very rare case and likely represents a bug.
-    emit_cmpmem_imm((intptr_t)&g_dev.r4300.new_dynarec_hot_state.pending_exception,0);
+    emit_cmpmem_imm((intptr_t)&g_dev.r4300.recompiler_hot_state.pending_exception,0);
     intptr_t jaddr=(intptr_t)out;
     emit_jeq(0);
 
@@ -5234,7 +5234,7 @@ static void cop0_assemble(int i,struct regstat *i_regs)
 #endif
 
         restore_regs(reglist);
-        emit_readword((uintptr_t)&g_dev.r4300.new_dynarec_hot_state.rt,t);
+        emit_readword((uintptr_t)&g_dev.r4300.recompiler_hot_state.rt,t);
       }
     }
   }
@@ -5244,7 +5244,7 @@ static void cop0_assemble(int i,struct regstat *i_regs)
     char copr=(source[i]>>11)&0x1f;
     assert(s>=0);
 
-    emit_writeword(s,(uintptr_t)&g_dev.r4300.new_dynarec_hot_state.rt);
+    emit_writeword(s,(uintptr_t)&g_dev.r4300.recompiler_hot_state.rt);
 
     int cc=get_reg(i_regs->regmap,CCREG);
     if(cc>=0) {
@@ -5272,7 +5272,7 @@ static void cop0_assemble(int i,struct regstat *i_regs)
 
     if(copr==CP0_COUNT_REG||copr==CP0_STATUS_REG) {
       assert(!is_delayslot);
-      emit_cmpmem_imm((intptr_t)&g_dev.r4300.new_dynarec_hot_state.pending_exception,0);
+      emit_cmpmem_imm((intptr_t)&g_dev.r4300.recompiler_hot_state.pending_exception,0);
       intptr_t jaddr=(intptr_t)out;
       emit_jeq(0);
       load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
@@ -5376,7 +5376,7 @@ static void cop1_assemble(int i,struct regstat *i_regs)
   if (opcode2[i]==0) { // MFC1
     signed char tl=get_reg(i_regs->regmap,rt1[i]);
     if(tl>=0) {
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],tl);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],tl);
       emit_readword_indexed(0,tl,tl);
     }
   }
@@ -5384,7 +5384,7 @@ static void cop1_assemble(int i,struct regstat *i_regs)
     signed char tl=get_reg(i_regs->regmap,rt1[i]);
     signed char th=get_reg(i_regs->regmap,rt1[i]|64);
     if(tl>=0) {
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],tl);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],tl);
       if(th>=0) emit_readword_indexed(4,tl,th);
       emit_readword_indexed(0,tl,tl);
     }
@@ -5392,14 +5392,14 @@ static void cop1_assemble(int i,struct regstat *i_regs)
   else if (opcode2[i]==4) { // MTC1
     signed char sl=get_reg(i_regs->regmap,rs1[i]);
     signed char temp=get_reg(i_regs->regmap,-1);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_writeword_indexed(sl,0,temp);
   }
   else if (opcode2[i]==5) { // DMTC1
     signed char sl=get_reg(i_regs->regmap,rs1[i]);
     signed char sh=rs1[i]>0?get_reg(i_regs->regmap,rs1[i]|64):sl;
     signed char temp=get_reg(i_regs->regmap,-1);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_writeword_indexed(sh,4,temp);
     emit_writeword_indexed(sl,0,temp);
   }
@@ -5409,7 +5409,7 @@ static void cop1_assemble(int i,struct regstat *i_regs)
     signed char fs=get_reg(i_regs->regmap,FSREG);
     if(tl>=0) {
       u_int copr=(source[i]>>11)&0x1f;
-      if(copr==0) emit_readword((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_fcr0,tl);
+      if(copr==0) emit_readword((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_fcr0,tl);
       if(copr==31)
       {
           if(fs>=0) emit_mov(fs,tl);
@@ -6760,11 +6760,11 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
     cop1_usable=1;
   }
   if (opcode[i]==0x39) { // SWC1 (get float address)
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],tl);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],tl);
     emit_readword_indexed(0,tl,tl);
   }
   else if (opcode[i]==0x3D) { // SDC1 (get double address)
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],tl);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],tl);
     emit_readword_indexed(4,tl,th);
     emit_readword_indexed(0,tl,tl);
   }
@@ -6872,11 +6872,11 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
 #endif
 
   if (opcode[i]==0x31) { // LWC1 (write float)
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],temp);
     emit_writeword_indexed(tl,0,temp);
   }
   else if (opcode[i]==0x35) { // LDC1 (write double)
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],temp);
     emit_writeword_indexed(th,4,temp);
     emit_writeword_indexed(tl,0,temp);
   }
@@ -8494,7 +8494,7 @@ static void pagespan_assemble(int i,struct regstat *i_regs)
     intptr_t jaddr=(intptr_t)out;
     emit_js(0);
     emit_movimm(start+i*4+8,0);
-    emit_writeword(0,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.pcaddr);
+    emit_writeword(0,(intptr_t)&g_dev.r4300.recompiler_hot_state.pcaddr);
     emit_call((intptr_t)cc_interrupt);
     set_jump_target((intptr_t)jaddr,(intptr_t)out);
     void *branch_addr=out;
@@ -8535,7 +8535,7 @@ static void pagespan_ds(void)
   if(regs[0].regmap[HOST_CCREG]!=CCREG)
     wb_register(CCREG,regs[0].regmap_entry,regs[0].wasdirty,regs[0].was32);
   if(regs[0].regmap[HOST_BTREG]!=BTREG)
-    emit_writeword(HOST_BTREG,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.branch_target);
+    emit_writeword(HOST_BTREG,(intptr_t)&g_dev.r4300.recompiler_hot_state.branch_target);
   load_regs(regs[0].regmap_entry,regs[0].regmap,regs[0].was32,rs1[0],rs2[0]);
   address_generation(0,&regs[0],regs[0].regmap_entry);
   if(itype[0]==LOAD||itype[0]==LOADLR||itype[0]==STORE||itype[0]==STORELR||itype[0]==C1LS)
@@ -8589,7 +8589,7 @@ static void pagespan_ds(void)
   int btaddr=get_reg(regs[0].regmap,BTREG);
   if(btaddr<0) {
     btaddr=get_reg(regs[0].regmap,-1);
-    emit_readword((intptr_t)&g_dev.r4300.new_dynarec_hot_state.branch_target,btaddr);
+    emit_readword((intptr_t)&g_dev.r4300.recompiler_hot_state.branch_target,btaddr);
   }
   assert(btaddr!=HOST_CCREG);
   if(regs[0].regmap[HOST_CCREG]!=CCREG) emit_loadreg(CCREG,HOST_CCREG);
@@ -8597,7 +8597,7 @@ static void pagespan_ds(void)
   intptr_t jaddr=(intptr_t)out;
   emit_js(0);
   wb_dirtys(regs[0].regmap,regs[0].is32,regs[0].dirty);
-  emit_writeword(btaddr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.pcaddr);
+  emit_writeword(btaddr,(intptr_t)&g_dev.r4300.recompiler_hot_state.pcaddr);
   emit_call((intptr_t)cc_interrupt);
   load_all_regs(regs[0].regmap);
   set_jump_target((intptr_t)jaddr,(intptr_t)out);
@@ -8700,34 +8700,34 @@ void new_dynarec_init(void)
   assert(((uintptr_t)g_dev.rdram.dram&7)==0); //8 bytes aligned
   out=(u_char *)base_addr;
 
-  g_dev.r4300.new_dynarec_hot_state.pc = &g_dev.r4300.new_dynarec_hot_state.fake_pc;
-  g_dev.r4300.new_dynarec_hot_state.fake_pc.f.r.rs = &g_dev.r4300.new_dynarec_hot_state.rs;
-  g_dev.r4300.new_dynarec_hot_state.fake_pc.f.r.rt = &g_dev.r4300.new_dynarec_hot_state.rt;
-  g_dev.r4300.new_dynarec_hot_state.fake_pc.f.r.rd = &g_dev.r4300.new_dynarec_hot_state.rd;
+  g_dev.r4300.recompiler_hot_state.pc = &g_dev.r4300.recompiler_hot_state.fake_pc;
+  g_dev.r4300.recompiler_hot_state.fake_pc.f.r.rs = &g_dev.r4300.recompiler_hot_state.rs;
+  g_dev.r4300.recompiler_hot_state.fake_pc.f.r.rt = &g_dev.r4300.recompiler_hot_state.rt;
+  g_dev.r4300.recompiler_hot_state.fake_pc.f.r.rd = &g_dev.r4300.recompiler_hot_state.rd;
   int n;
   for(n=0x80000;n<0x80800;n++)
     g_dev.r4300.cached_interp.invalid_code[n]=1;
   for(n=0;n<65536;n++)
     hash_table[n][0]=hash_table[n][1]=NULL;
-  memset(g_dev.r4300.new_dynarec_hot_state.mini_ht,-1,sizeof(g_dev.r4300.new_dynarec_hot_state.mini_ht));
+  memset(g_dev.r4300.recompiler_hot_state.mini_ht,-1,sizeof(g_dev.r4300.recompiler_hot_state.mini_ht));
   memset(restore_candidate,0,sizeof(restore_candidate));
   copy_size=0;
   expirep=16384; // Expiry pointer, +2 blocks
-  g_dev.r4300.new_dynarec_hot_state.pending_exception=0;
+  g_dev.r4300.recompiler_hot_state.pending_exception=0;
   literalcount=0;
 #if defined(HOST_IMM8) || defined(NEED_INVC_PTR)
   // Copy this into local area so we don't have to put it in every literal pool
-  g_dev.r4300.new_dynarec_hot_state.invc_ptr=g_dev.r4300.cached_interp.invalid_code;
+  g_dev.r4300.recompiler_hot_state.invc_ptr=g_dev.r4300.cached_interp.invalid_code;
 #endif
   stop_after_jal=0;
   // TLB
   using_tlb=0;
   for(n=0;n<524288;n++) // 0 .. 0x7FFFFFFF
-    g_dev.r4300.new_dynarec_hot_state.memory_map[n]=(uintptr_t)-1;
+    g_dev.r4300.recompiler_hot_state.memory_map[n]=(uintptr_t)-1;
   for(n=524288;n<526336;n++) // 0x80000000 .. 0x807FFFFF
-    g_dev.r4300.new_dynarec_hot_state.memory_map[n]=((uintptr_t)g_dev.rdram.dram-(uintptr_t)0x80000000)>>2;
+    g_dev.r4300.recompiler_hot_state.memory_map[n]=((uintptr_t)g_dev.rdram.dram-(uintptr_t)0x80000000)>>2;
   for(n=526336;n<1048576;n++) // 0x80800000 .. 0xFFFFFFFF
-    g_dev.r4300.new_dynarec_hot_state.memory_map[n]=(uintptr_t)-1;
+    g_dev.r4300.recompiler_hot_state.memory_map[n]=(uintptr_t)-1;
 
   tlb_speed_hacks();
   arch_init();
@@ -8784,24 +8784,24 @@ int new_recompile_block(int addr)
     pagelimit = 0x80800000;
   }
   else if ((signed int)addr >= (signed int)0xC0000000) {
-    //DebugMessage(M64MSG_VERBOSE, "addr=%x mm=%x",(u_int)addr,(g_dev.r4300.new_dynarec_hot_state.memory_map[start>>12]<<2));
+    //DebugMessage(M64MSG_VERBOSE, "addr=%x mm=%x",(u_int)addr,(g_dev.r4300.recompiler_hot_state.memory_map[start>>12]<<2));
     //if(g_dev.r4300.cp0.tlb.LUT_r[start>>12])
     //source = (u_int *)(((intptr_t)g_dev.rdram.dram)+(g_dev.r4300.cp0.tlb.LUT_r[start>>12]&0xFFFFF000)+(((int)addr)&0xFFF)-(intptr_t)0x80000000);
-    if((intptr_t)g_dev.r4300.new_dynarec_hot_state.memory_map[start>>12]>=0) {
-      source = (u_int *)((uintptr_t)(start+(uintptr_t)(g_dev.r4300.new_dynarec_hot_state.memory_map[start>>12]<<2)));
+    if((intptr_t)g_dev.r4300.recompiler_hot_state.memory_map[start>>12]>=0) {
+      source = (u_int *)((uintptr_t)(start+(uintptr_t)(g_dev.r4300.recompiler_hot_state.memory_map[start>>12]<<2)));
       pagelimit=(start+4096)&0xFFFFF000;
-      intptr_t map=g_dev.r4300.new_dynarec_hot_state.memory_map[start>>12];
+      intptr_t map=g_dev.r4300.recompiler_hot_state.memory_map[start>>12];
       int i;
       for(i=0;i<5;i++) {
-        //DebugMessage(M64MSG_VERBOSE, "start: %x next: %x",map,g_dev.r4300.new_dynarec_hot_state.memory_map[pagelimit>>12]);
-        if((map&~WRITE_PROTECT)==(g_dev.r4300.new_dynarec_hot_state.memory_map[pagelimit>>12]&~WRITE_PROTECT)) pagelimit+=4096;
+        //DebugMessage(M64MSG_VERBOSE, "start: %x next: %x",map,g_dev.r4300.recompiler_hot_state.memory_map[pagelimit>>12]);
+        if((map&~WRITE_PROTECT)==(g_dev.r4300.recompiler_hot_state.memory_map[pagelimit>>12]&~WRITE_PROTECT)) pagelimit+=4096;
       }
       assem_debug("pagelimit=%x",pagelimit);
-      assem_debug("mapping=%x (%x)",g_dev.r4300.new_dynarec_hot_state.memory_map[start>>12],(uintptr_t)(g_dev.r4300.new_dynarec_hot_state.memory_map[start>>12]<<2)+start);
+      assem_debug("mapping=%x (%x)",g_dev.r4300.recompiler_hot_state.memory_map[start>>12],(uintptr_t)(g_dev.r4300.recompiler_hot_state.memory_map[start>>12]<<2)+start);
     }
     else {
       assem_debug("Compile at unmapped memory address: %x ", (int)addr);
-      //assem_debug("start: %x next: %x",g_dev.r4300.new_dynarec_hot_state.memory_map[start>>12],g_dev.r4300.new_dynarec_hot_state.memory_map[(start+4096)>>12]);
+      //assem_debug("start: %x next: %x",g_dev.r4300.recompiler_hot_state.memory_map[start>>12],g_dev.r4300.recompiler_hot_state.memory_map[(start+4096)>>12]);
       return 1; // Caller will invoke exception handler
     }
     //DebugMessage(M64MSG_VERBOSE, "source= %x",(intptr_t)source);
@@ -11824,13 +11824,13 @@ int new_recompile_block(int addr)
   // Trap writes to any of the pages we compiled
   for(i=start>>12;i<=(int)((start+slen*4-4)>>12);i++) {
     g_dev.r4300.cached_interp.invalid_code[i]=0;
-    g_dev.r4300.new_dynarec_hot_state.memory_map[i]|=WRITE_PROTECT;
+    g_dev.r4300.recompiler_hot_state.memory_map[i]|=WRITE_PROTECT;
     if((signed int)start>=(signed int)0xC0000000) {
       assert(using_tlb);
-      assert(g_dev.r4300.new_dynarec_hot_state.memory_map[i]!=-1);
-      j=(((uintptr_t)i<<12)+(uintptr_t)(g_dev.r4300.new_dynarec_hot_state.memory_map[i]<<2)-(uintptr_t)g_dev.rdram.dram+(uintptr_t)0x80000000)>>12;
+      assert(g_dev.r4300.recompiler_hot_state.memory_map[i]!=-1);
+      j=(((uintptr_t)i<<12)+(uintptr_t)(g_dev.r4300.recompiler_hot_state.memory_map[i]<<2)-(uintptr_t)g_dev.rdram.dram+(uintptr_t)0x80000000)>>12;
       g_dev.r4300.cached_interp.invalid_code[j]=0;
-      g_dev.r4300.new_dynarec_hot_state.memory_map[j]|=WRITE_PROTECT;
+      g_dev.r4300.recompiler_hot_state.memory_map[j]|=WRITE_PROTECT;
       //DebugMessage(M64MSG_VERBOSE, "write protect physical page: %x (virtual %x)",j<<12,start);
     }
   }
@@ -11888,3 +11888,9 @@ int new_recompile_block(int addr)
   }
   return 0;
 }
+
+int skip_log(void)
+{
+    return 1;
+}
+

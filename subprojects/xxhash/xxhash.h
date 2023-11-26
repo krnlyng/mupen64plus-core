@@ -4816,9 +4816,9 @@ XXH3_accumulate_512_sse2( void* XXH_RESTRICT acc,
             xacc[i] = _mm_add_epi64(product, sum);
     }   }
 }
-XXH_FORCE_INLINE XXH_TARGET_SSE2 XXH3_ACCUMULATE_TEMPLATE(sse2)
+static inline XXH_TARGET_SSE2 XXH3_ACCUMULATE_TEMPLATE(sse2)
 
-XXH_FORCE_INLINE XXH_TARGET_SSE2 void
+static inline XXH_TARGET_SSE2 void
 XXH3_scrambleAcc_sse2(void* XXH_RESTRICT acc, const void* XXH_RESTRICT secret)
 {
     XXH_ASSERT((((size_t)acc) & 15) == 0);

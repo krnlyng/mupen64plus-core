@@ -117,10 +117,17 @@ void pif_bootrom_hle_execute(struct r4300_core* r4300)
 
     /* XXX: if XBus is used, wait until DPC_pipe_busy is cleared */
 
+#ifdef VR4300_JITTER
+    /* copy IPL3 to dmem */
+    memcpy((unsigned char*)vr4300_jitter_get_logical_memory(MM_RSP_MEM) + 0x40,
+           (unsigned char*)vr4300_jitter_get_logical_memory(rom_base) + 0x40,
+           0xfc0);
+#else
     /* copy IPL3 to dmem */
     memcpy((unsigned char*)mem_base_u32(r4300->mem->base, MM_RSP_MEM + 0x40),
            (unsigned char*)mem_base_u32(r4300->mem->base, rom_base + 0x40),
            0xfc0);
+#endif
 
     /* XXX: compute IPL3 checksum */
     /* XXX: wait for SI_RD_BUSY to be cleared, set PIF_30 */
@@ -130,7 +137,11 @@ void pif_bootrom_hle_execute(struct r4300_core* r4300)
     /* XXX: wait for SI_RD_BUSY to be cleared, set PIF_3c[6] */
 
     /* required by CIC x105 */
+#ifdef VR4300_JITTER
+    uint32_t* imem = (uint32_t*)(vr4300_jitter_get_logical_memory(MM_RSP_MEM) + 0x1000);
+#else
     uint32_t* imem = mem_base_u32(r4300->mem->base, MM_RSP_MEM + 0x1000);
+#endif
     imem[0x0000/4] = 0x3c0dbfc0;
     imem[0x0004/4] = 0x8da807fc;
     imem[0x0008/4] = 0x25ad07c0;
@@ -144,6 +155,11 @@ void pif_bootrom_hle_execute(struct r4300_core* r4300)
     r4300_gpregs[11] = INT64_C(0xffffffffa4000040); /* t3 */
     r4300_gpregs[29] = INT64_C(0xffffffffa4001ff0); /* sp */
     r4300_gpregs[31] = INT64_C(0xffffffffa4001550); /* ra */
+
+#ifdef VR4300_JITTER
+    memcpy(&r4300->recompiler_hot_state.gprs_tmp[0], r4300_gpregs, 32*sizeof(int64_t));
+    memset(&r4300->recompiler_hot_state.fprs_tmp[0], 0, 32*sizeof(int64_t));
+#endif
 
     /* XXX: should prepare execution of IPL3 in DMEM here :
      * e.g. jump to 0xa4000040 */

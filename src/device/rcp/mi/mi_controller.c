@@ -26,6 +26,7 @@
 #include "device/r4300/cp0.h"
 #include "device/r4300/interrupt.h"
 #include "device/r4300/r4300_core.h"
+#include "main/main.h"
 
 static int update_mi_init_mode(uint32_t* mi_init_mode, uint32_t w)
 {
@@ -77,13 +78,20 @@ void poweron_mi(struct mi_controller* mi)
     mi->regs[MI_VERSION_REG] = 0x02020102;
 }
 
-
 void read_mi_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct mi_controller* mi = (struct mi_controller*)opaque;
     uint32_t reg = mi_reg(address);
 
     *value = mi->regs[reg];
+}
+
+uint32_t read_mi_regs_from_dynarec(void* opaque, uint32_t address)
+{
+    struct mi_controller* mi = (struct mi_controller*)opaque;
+    uint32_t reg = mi_reg(address);
+
+    return mi->regs[reg];
 }
 
 void write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)

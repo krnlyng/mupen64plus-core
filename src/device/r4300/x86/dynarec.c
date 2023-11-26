@@ -176,13 +176,13 @@ static void gencheck_interrupt_reg(struct r4300_core* r4300) // addr is in EAX
 
 static void gendelayslot(struct r4300_core* r4300)
 {
-    mov_m32_imm32(&r4300->delay_slot, 1);
+    mov_m32_imm32(&DELAY_SLOT(r4300), 1);
     recompile_opcode(r4300);
 
     free_all_registers(r4300);
     gencp0_update_count(r4300, r4300->recomp.dst->addr+4);
 
-    mov_m32_imm32(&r4300->delay_slot, 0);
+    mov_m32_imm32(&DELAY_SLOT(r4300), 0);
 }
 
 #ifdef COMPARE_CORE

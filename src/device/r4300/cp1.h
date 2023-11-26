@@ -22,6 +22,10 @@
 #ifndef M64P_DEVICE_R4300_CP1_H
 #define M64P_DEVICE_R4300_CP1_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include "osal/preproc.h"
 #include "new_dynarec/new_dynarec.h"
@@ -32,11 +36,15 @@ typedef union {
     float    float32[2];
 }cp1_reg;
 
+#include "vr4300_jitter/vr4300_jitter.h"
+
 struct cp1
 {
-    cp1_reg regs[32];
+#ifndef VR4300_JITTER
+    cp1_reg cp1_regs[32];
+#endif
 
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 	/* New dynarec uses a different memory layout */
     uint32_t fcr0;
     uint32_t fcr31;
@@ -58,51 +66,54 @@ struct cp1
 
 #ifdef NEW_DYNAREC
 	/* New dynarec uses a different memory layout */
-    struct new_dynarec_hot_state* new_dynarec_hot_state;
+    struct recompiler_hot_state* recompiler_hot_state;
+#endif
+#ifdef VR4300_JITTER
+    struct recompiler_hot_state* recompiler_hot_state;
 #endif
 };
 
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 #define R4300_CP1_REGS_S_OFFSET (\
     offsetof(struct r4300_core, cp1) + \
     offsetof(struct cp1, regs_simple))
 #else
 #define R4300_CP1_REGS_S_OFFSET (\
-    offsetof(struct r4300_core, new_dynarec_hot_state) + \
-    offsetof(struct new_dynarec_hot_state, cp1_regs_simple))
+    offsetof(struct r4300_core, recompiler_hot_state) + \
+    offsetof(struct recompiler_hot_state, cp1_regs_simple))
 #endif
 
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 #define R4300_CP1_REGS_D_OFFSET (\
     offsetof(struct r4300_core, cp1) + \
     offsetof(struct cp1, regs_double))
 #else
 #define R4300_CP1_REGS_D_OFFSET (\
-    offsetof(struct r4300_core, new_dynarec_hot_state) + \
-    offsetof(struct new_dynarec_hot_state, cp1_regs_double))
+    offsetof(struct r4300_core, recompiler_hot_state) + \
+    offsetof(struct recompiler_hot_state, cp1_regs_double))
 #endif
 
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 #define R4300_CP1_FCR0_OFFSET (\
     offsetof(struct r4300_core, cp1) + \
     offsetof(struct cp1, fcr0))
 #else
 #define R4300_CP1_FCR0_OFFSET (\
-    offsetof(struct r4300_core, new_dynarec_hot_state) + \
-    offsetof(struct new_dynarec_hot_state, cp1_fcr0))
+    offsetof(struct r4300_core, recompiler_hot_state) + \
+    offsetof(struct recompiler_hot_state, cp1_fcr0))
 #endif
 
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 #define R4300_CP1_FCR31_OFFSET (\
     offsetof(struct r4300_core, cp1) + \
     offsetof(struct cp1, fcr31))
 #else
 #define R4300_CP1_FCR31_OFFSET (\
-    offsetof(struct r4300_core, new_dynarec_hot_state) + \
-    offsetof(struct new_dynarec_hot_state, cp1_fcr31))
+    offsetof(struct r4300_core, recompiler_hot_state) + \
+    offsetof(struct recompiler_hot_state, cp1_fcr31))
 #endif
 
-void init_cp1(struct cp1* cp1, struct new_dynarec_hot_state* new_dynarec_hot_state);
+void init_cp1(struct cp1* cp1, struct recompiler_hot_state* recompiler_hot_state);
 void poweron_cp1(struct cp1* cp1);
 
 cp1_reg* r4300_cp1_regs(struct cp1* cp1);
@@ -115,6 +126,10 @@ uint32_t* r4300_cp1_fcr31(struct cp1* cp1);
 void set_fpr_pointers(struct cp1* cp1, uint32_t newStatus);
 
 void update_x86_rounding_mode(struct cp1* cp1);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* M64P_DEVICE_R4300_CP1_H */
 

@@ -18,18 +18,18 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#define fp_cycle_count         (offsetof(struct new_dynarec_hot_state, cycle_count))
-#define fp_invc_ptr            (offsetof(struct new_dynarec_hot_state, invc_ptr))
-#define fp_fcr31               (offsetof(struct new_dynarec_hot_state, cp1_fcr31))
-#define fp_regs                (offsetof(struct new_dynarec_hot_state, regs))
-#define fp_hi                  (offsetof(struct new_dynarec_hot_state, hi))
-#define fp_lo                  (offsetof(struct new_dynarec_hot_state, lo))
-#define fp_cp0_regs(x)         ((offsetof(struct new_dynarec_hot_state, cp0_regs)) + (x)*sizeof(uint32_t))
-#define fp_rounding_modes      (offsetof(struct new_dynarec_hot_state, rounding_modes))
-#define fp_fake_pc             (offsetof(struct new_dynarec_hot_state, fake_pc))
-#define fp_ram_offset          (offsetof(struct new_dynarec_hot_state, ram_offset))
-#define fp_mini_ht             (offsetof(struct new_dynarec_hot_state, mini_ht))
-#define fp_memory_map          (offsetof(struct new_dynarec_hot_state, memory_map))
+#define fp_cycle_count         (offsetof(struct recompiler_hot_state, cycle_count))
+#define fp_invc_ptr            (offsetof(struct recompiler_hot_state, invc_ptr))
+#define fp_fcr31               (offsetof(struct recompiler_hot_state, cp1_fcr31))
+#define fp_regs                (offsetof(struct recompiler_hot_state, regs))
+#define fp_hi                  (offsetof(struct recompiler_hot_state, hi))
+#define fp_lo                  (offsetof(struct recompiler_hot_state, lo))
+#define fp_cp0_regs(x)         ((offsetof(struct recompiler_hot_state, cp0_regs)) + (x)*sizeof(uint32_t))
+#define fp_rounding_modes      (offsetof(struct recompiler_hot_state, rounding_modes))
+#define fp_fake_pc             (offsetof(struct recompiler_hot_state, fake_pc))
+#define fp_ram_offset          (offsetof(struct recompiler_hot_state, ram_offset))
+#define fp_mini_ht             (offsetof(struct recompiler_hot_state, mini_ht))
+#define fp_memory_map          (offsetof(struct recompiler_hot_state, memory_map))
 
 typedef enum {
   COND_EQ,
@@ -2247,7 +2247,7 @@ static void emit_movzwl_indexed_tlb(int addr, int rs, int map, int rt)
 
 static void emit_readword(intptr_t addr, int rt)
 {
-  intptr_t offset = addr-(intptr_t)&g_dev.r4300.new_dynarec_hot_state;
+  intptr_t offset = addr-(intptr_t)&g_dev.r4300.recompiler_hot_state;
   assert(offset<16380LL);
   assert(offset%4 == 0); /* 4 bytes aligned */
   assem_debug("ldr %s,fp+%d",regname[rt],offset);
@@ -2255,7 +2255,7 @@ static void emit_readword(intptr_t addr, int rt)
 }
 static void emit_readdword(intptr_t addr, int rt)
 {
-  intptr_t offset = addr-(intptr_t)&g_dev.r4300.new_dynarec_hot_state;
+  intptr_t offset = addr-(intptr_t)&g_dev.r4300.recompiler_hot_state;
   assert(offset<32760LL);
   assert(offset%8 == 0); /* 8 bytes aligned */
   assem_debug("ldr %s,fp+%d",regname64[rt],offset);
@@ -2268,7 +2268,7 @@ static void emit_readptr(intptr_t addr, int rt)
 
 static void emit_movsbl(int addr, int rt)
 {
-  intptr_t offset = addr-(intptr_t)&g_dev.r4300.new_dynarec_hot_state;
+  intptr_t offset = addr-(intptr_t)&g_dev.r4300.recompiler_hot_state;
   assert(offset<4096LL);
   assem_debug("ldrsb %s,fp+%d",regname[rt],offset);
   output_w32(0x39800000|offset<<10|FP<<5|rt);
@@ -2276,7 +2276,7 @@ static void emit_movsbl(int addr, int rt)
 
 static void emit_movswl(int addr, int rt)
 {
-  intptr_t offset = addr-(intptr_t)&g_dev.r4300.new_dynarec_hot_state;
+  intptr_t offset = addr-(intptr_t)&g_dev.r4300.recompiler_hot_state;
   assert(offset<8190LL);
   assert(offset%2 == 0); /* 2 bytes aligned */
   assem_debug("ldrsh %s,fp+%d",regname[rt],offset);
@@ -2285,7 +2285,7 @@ static void emit_movswl(int addr, int rt)
 
 static void emit_movzbl(intptr_t addr, int rt)
 {
-  intptr_t offset = addr-(intptr_t)&g_dev.r4300.new_dynarec_hot_state;
+  intptr_t offset = addr-(intptr_t)&g_dev.r4300.recompiler_hot_state;
   assert(offset<4096LL);
   assem_debug("ldrb %s,fp+%d",regname[rt],offset);
   output_w32(0x39400000|offset<<10|FP<<5|rt);
@@ -2293,7 +2293,7 @@ static void emit_movzbl(intptr_t addr, int rt)
 
 static void emit_movzwl(int addr, int rt)
 {
-  intptr_t offset = addr-(intptr_t)&g_dev.r4300.new_dynarec_hot_state;
+  intptr_t offset = addr-(intptr_t)&g_dev.r4300.recompiler_hot_state;
   assert(offset<8190LL);
   assert(offset%2 == 0); /* 2 bytes aligned */
   assem_debug("ldrh %s,fp+%d",regname[rt],offset);
@@ -2392,7 +2392,7 @@ static void emit_writebyte_indexed_tlb(int rt, int addr, int rs, int map)
 
 static void emit_writeword(int rt, intptr_t addr)
 {
-  intptr_t offset = addr-(intptr_t)&g_dev.r4300.new_dynarec_hot_state;
+  intptr_t offset = addr-(intptr_t)&g_dev.r4300.recompiler_hot_state;
   assert(offset<16380LL);
   assert(offset%4 == 0); /* 4 bytes aligned */
   assem_debug("str %s,fp+%d",regname[rt],offset);
@@ -2401,7 +2401,7 @@ static void emit_writeword(int rt, intptr_t addr)
 
 static void emit_writedword(int rt, intptr_t addr)
 {
-  intptr_t offset = addr-(intptr_t)&g_dev.r4300.new_dynarec_hot_state;
+  intptr_t offset = addr-(intptr_t)&g_dev.r4300.recompiler_hot_state;
   assert(offset<32760LL);
   assert(offset%8 == 0); /* 8 bytes aligned */
   assem_debug("str %s,fp+%d",regname64[rt],offset);
@@ -2410,7 +2410,7 @@ static void emit_writedword(int rt, intptr_t addr)
 
 static void emit_writehword(int rt, int addr)
 {
-  intptr_t offset = addr-(intptr_t)&g_dev.r4300.new_dynarec_hot_state;
+  intptr_t offset = addr-(intptr_t)&g_dev.r4300.recompiler_hot_state;
   assert(offset<8190LL);
   assert(offset%2 == 0); /* 2 bytes aligned */
   assem_debug("strh %s,fp+%d",regname[rt],offset);
@@ -2419,7 +2419,7 @@ static void emit_writehword(int rt, int addr)
 
 static void emit_writebyte(int rt, intptr_t addr)
 {
-  intptr_t offset = addr-(intptr_t)&g_dev.r4300.new_dynarec_hot_state;
+  intptr_t offset = addr-(intptr_t)&g_dev.r4300.recompiler_hot_state;
   assert(offset<4096LL);
   assem_debug("strb %s,fp+%d",regname[rt],offset);
   output_w32(0x39000000|offset<<10|(FP<<5)|rt);
@@ -3522,70 +3522,70 @@ static void fconv_assemble_arm64(int i,struct regstat *i_regs)
   //}
 
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x08) { //round_l_s
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_flds(temp,31);
     emit_fcvtns_l_s(31,HOST_TEMPREG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
     emit_writedword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x09) { //trunc_l_s
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_flds(temp,31);
     emit_fcvtzs_l_s(31,HOST_TEMPREG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
     emit_writedword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x0a) { //ceil_l_s
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_flds(temp,31);
     emit_fcvtps_l_s(31,HOST_TEMPREG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
     emit_writedword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x0b) { //floor_l_s
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_flds(temp,31);
     emit_fcvtms_l_s(31,HOST_TEMPREG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
     emit_writedword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x0c) { //round_w_s
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_flds(temp,31);
     emit_fcvtns_w_s(31,HOST_TEMPREG);
     if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f))
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
     emit_writeword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x0d) { //trunc_w_s
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_flds(temp,31);
     emit_fcvtzs_w_s(31,HOST_TEMPREG);
     if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f))
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
     emit_writeword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x0e) { //ceil_w_s
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_flds(temp,31);
     emit_fcvtps_w_s(31,HOST_TEMPREG);
     if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f))
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
     emit_writeword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x0f) { //floor_w_s
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_flds(temp,31);
     emit_fcvtms_w_s(31,HOST_TEMPREG);
     if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f))
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
     emit_writeword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
@@ -3600,79 +3600,79 @@ static void fconv_assemble_arm64(int i,struct regstat *i_regs)
   //}
 
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x08) { //round_l_d
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_fldd(temp,31);
     emit_fcvtns_l_d(31,HOST_TEMPREG);
     if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f))
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
     emit_writedword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x09) { //trunc_l_d
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_fldd(temp,31);
     emit_fcvtzs_l_d(31,HOST_TEMPREG);
     if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f))
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
     emit_writedword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x0a) { //ceil_l_d
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_fldd(temp,31);
     emit_fcvtps_l_d(31,HOST_TEMPREG);
     if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f))
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
     emit_writedword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x0b) { //floor_l_d
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_fldd(temp,31);
     emit_fcvtms_l_d(31,HOST_TEMPREG);
     if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f))
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
     emit_writedword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x0c) { //round_w_d
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_fldd(temp,31);
     emit_fcvtns_w_d(31,HOST_TEMPREG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
     emit_writeword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x0d) { //trunc_w_d
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_fldd(temp,31);
     emit_fcvtzs_w_d(31,HOST_TEMPREG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
     emit_writeword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x0e) { //ceil_w_d
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_fldd(temp,31);
     emit_fcvtps_w_d(31,HOST_TEMPREG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
     emit_writeword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x0f) { //floor_w_d
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_fldd(temp,31);
     emit_fcvtms_w_d(31,HOST_TEMPREG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
     emit_writeword_indexed(HOST_TEMPREG,0,temp);
     return;
   }
 
   /*Single-precision to Double-precision*/
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x21) { //cvt_d_s
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_flds(temp,31);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
     emit_fcvt_d_s(31,31);
     emit_fstd(31,temp);
     return;
@@ -3680,50 +3680,50 @@ static void fconv_assemble_arm64(int i,struct regstat *i_regs)
 
   /*Double-precision to Single-precision*/
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x20) { //cvt_s_d
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_fldd(temp,31);
     emit_fcvt_s_d(31,31);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
     emit_fsts(31,temp);
     return;
   }
 
   /*Integer to Single-precision*/
   if(opcode2[i]==0x14&&(source[i]&0x3f)==0x20) { //cvt_s_w
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_readword_indexed(0,temp,HOST_TEMPREG);
     emit_scvtf_s_w(HOST_TEMPREG,31);
     if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f))
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
     emit_fsts(31,temp);
     return;
   }
 
   if(opcode2[i]==0x15&&(source[i]&0x3f)==0x20) { //cvt_s_l
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_readdword_indexed(0,temp,HOST_TEMPREG);
     emit_scvtf_s_l(HOST_TEMPREG,31);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
     emit_fsts(31,temp);
     return;
   }
 
   /*Integer Double-precision*/
   if(opcode2[i]==0x14&&(source[i]&0x3f)==0x21) { //cvt_d_w
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_readword_indexed(0,temp,HOST_TEMPREG);
     emit_scvtf_d_w(HOST_TEMPREG,31);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
     emit_fstd(31,temp);
     return;
   }
 
   if(opcode2[i]==0x15&&(source[i]&0x3f)==0x21) { //cvt_d_l
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_readdword_indexed(0,temp,HOST_TEMPREG);
     emit_scvtf_d_l(HOST_TEMPREG,31);
     if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f))
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
     emit_fstd(31,temp);
     return;
   }
@@ -3741,146 +3741,146 @@ static void fconv_assemble_arm64(int i,struct regstat *i_regs)
 
   if(opcode2[i]==0x14&&(source[i]&0x3f)==0x20) {
     emit_addimm64(FP,fp_fcr31,ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG2_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG3_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG3_REG);
     emit_call((intptr_t)cvt_s_w);
   }
   if(opcode2[i]==0x14&&(source[i]&0x3f)==0x21) {
     emit_addimm64(FP,fp_fcr31,ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)cvt_d_w);
   }
   if(opcode2[i]==0x15&&(source[i]&0x3f)==0x20) {
     emit_addimm64(FP,fp_fcr31,ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG3_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG3_REG);
     emit_call((intptr_t)cvt_s_l);
   }
   if(opcode2[i]==0x15&&(source[i]&0x3f)==0x21) {
     emit_addimm64(FP,fp_fcr31,ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG3_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG3_REG);
     emit_call((intptr_t)cvt_d_l);
   }
 
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x21) {
     emit_addimm64(FP,fp_fcr31,ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)cvt_d_s);
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x24) {
     emit_addimm64(FP,fp_fcr31,ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG2_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG3_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG3_REG);
     emit_call((intptr_t)cvt_w_s);
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x25) {
     emit_addimm64(FP,fp_fcr31,ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG2_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG3_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG3_REG);
     emit_call((intptr_t)cvt_l_s);
   }
 
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x20) {
     emit_addimm64(FP,fp_fcr31,ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG3_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG3_REG);
     emit_call((intptr_t)cvt_s_d);
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x24) {
     emit_addimm64(FP,fp_fcr31,ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG3_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG3_REG);
     emit_call((intptr_t)cvt_w_d);
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x25) {
     emit_addimm64(FP,fp_fcr31,ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG3_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG3_REG);
     emit_call((intptr_t)cvt_l_d);
   }
 
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x08) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)round_l_s);
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x09) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)trunc_l_s);
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x0a) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)ceil_l_s);
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x0b) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)floor_l_s);
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x0c) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)round_w_s);
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x0d) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)trunc_w_s);
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x0e) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)ceil_w_s);
   }
   if(opcode2[i]==0x10&&(source[i]&0x3f)==0x0f) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)floor_w_s);
   }
 
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x08) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)round_l_d);
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x09) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)trunc_l_d);
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x0a) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)ceil_l_d);
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x0b) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)floor_l_d);
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x0c) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)round_w_d);
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x0d) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)trunc_w_d);
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x0e) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)ceil_w_d);
   }
   if(opcode2[i]==0x11&&(source[i]&0x3f)==0x0f) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
     emit_call((intptr_t)floor_w_d);
   }
 
@@ -3917,8 +3917,8 @@ static void fcomp_assemble(int i,struct regstat *i_regs)
   }
 
   if(opcode2[i]==0x10) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],HOST_TEMPREG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],HOST_TEMPREG);
     emit_flds(temp,30);
     emit_flds(HOST_TEMPREG,31);
     emit_andimm(fs,~0x800000,fs);
@@ -3940,8 +3940,8 @@ static void fcomp_assemble(int i,struct regstat *i_regs)
     return;
   }
   if(opcode2[i]==0x11) {
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],HOST_TEMPREG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],HOST_TEMPREG);
     emit_fldd(temp,30);
     emit_fldd(HOST_TEMPREG,31);
     emit_andimm(fs,~0x800000,fs);
@@ -3975,8 +3975,8 @@ static void fcomp_assemble(int i,struct regstat *i_regs)
   save_regs(reglist);
   if(opcode2[i]==0x10) {
     emit_addimm64(FP,fp_fcr31,ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG2_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],ARG3_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],ARG3_REG);
     if((source[i]&0x3f)==0x30) emit_call((intptr_t)c_f_s);
     if((source[i]&0x3f)==0x31) emit_call((intptr_t)c_un_s);
     if((source[i]&0x3f)==0x32) emit_call((intptr_t)c_eq_s);
@@ -3996,8 +3996,8 @@ static void fcomp_assemble(int i,struct regstat *i_regs)
   }
   if(opcode2[i]==0x11) {
     emit_addimm64(FP,fp_fcr31,ARG1_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
-    emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],ARG3_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
+    emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],ARG3_REG);
     if((source[i]&0x3f)==0x30) emit_call((intptr_t)c_f_d);
     if((source[i]&0x3f)==0x31) emit_call((intptr_t)c_un_d);
     if((source[i]&0x3f)==0x32) emit_call((intptr_t)c_eq_d);
@@ -4039,14 +4039,14 @@ static void float_assemble(int i,struct regstat *i_regs)
   {
     if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f)) {
       if(opcode2[i]==0x10) {
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],HOST_TEMPREG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],HOST_TEMPREG);
         emit_flds(temp,31);
         emit_fsts(31,HOST_TEMPREG);
       }
       if(opcode2[i]==0x11) {
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],HOST_TEMPREG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],HOST_TEMPREG);
         emit_fldd(temp,31);
         emit_fstd(31,HOST_TEMPREG);
       }
@@ -4057,10 +4057,10 @@ static void float_assemble(int i,struct regstat *i_regs)
   if((source[i]&0x3f)>3)
   {
     if(opcode2[i]==0x10) {
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
       emit_flds(temp,31);
       if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f)) {
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
       }
       if((source[i]&0x3f)==4) // sqrt
         emit_fsqrts(31,31);
@@ -4071,10 +4071,10 @@ static void float_assemble(int i,struct regstat *i_regs)
       emit_fsts(31,temp);
     }
     if(opcode2[i]==0x11) {
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
       emit_fldd(temp,31);
       if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f)) {
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
       }
       if((source[i]&0x3f)==4) // sqrt
         emit_fsqrtd(31,31);
@@ -4089,19 +4089,19 @@ static void float_assemble(int i,struct regstat *i_regs)
   if((source[i]&0x3f)<4)
   {
     if(opcode2[i]==0x10) {
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     }
     if(opcode2[i]==0x11) {
-      emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
+      emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     }
     if(((source[i]>>11)&0x1f)!=((source[i]>>16)&0x1f)) {
       if(opcode2[i]==0x10) {
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],HOST_TEMPREG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],HOST_TEMPREG);
         emit_flds(temp,31);
         emit_flds(HOST_TEMPREG,30);
         if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f)) {
           if(((source[i]>>16)&0x1f)!=((source[i]>>6)&0x1f)) {
-            emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+            emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
           }
         }
         if((source[i]&0x3f)==0) emit_fadds(31,30,31);
@@ -4115,12 +4115,12 @@ static void float_assemble(int i,struct regstat *i_regs)
         }
       }
       else if(opcode2[i]==0x11) {
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],HOST_TEMPREG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],HOST_TEMPREG);
         emit_fldd(temp,31);
         emit_fldd(HOST_TEMPREG,30);
         if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f)) {
           if(((source[i]>>16)&0x1f)!=((source[i]>>6)&0x1f)) {
-            emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+            emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
           }
         }
         if((source[i]&0x3f)==0) emit_faddd(31,30,31);
@@ -4138,7 +4138,7 @@ static void float_assemble(int i,struct regstat *i_regs)
       if(opcode2[i]==0x10) {
         emit_flds(temp,31);
         if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f)) {
-          emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
+          emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>6)&0x1f],temp);
         }
         if((source[i]&0x3f)==0) emit_fadds(31,31,31);
         if((source[i]&0x3f)==1) emit_fsubs(31,31,31);
@@ -4149,7 +4149,7 @@ static void float_assemble(int i,struct regstat *i_regs)
       else if(opcode2[i]==0x11) {
         emit_fldd(temp,31);
         if(((source[i]>>11)&0x1f)!=((source[i]>>6)&0x1f)) {
-          emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
+          emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>6)&0x1f],temp);
         }
         if((source[i]&0x3f)==0) emit_faddd(31,31,31);
         if((source[i]&0x3f)==1) emit_fsubd(31,31,31);
@@ -4174,19 +4174,19 @@ static void float_assemble(int i,struct regstat *i_regs)
     {
       case 0x00: case 0x01: case 0x02: case 0x03:
         emit_addimm64(FP,fp_fcr31,ARG1_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG2_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],ARG3_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG4_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG2_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],ARG3_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG4_REG);
         break;
      case 0x04:
         emit_addimm64(FP,fp_fcr31,ARG1_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG2_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG3_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG2_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG3_REG);
         break;
      case 0x05: case 0x06: case 0x07:
         emit_addimm64(FP,fp_fcr31,ARG1_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],ARG1_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_simple[(source[i]>> 6)&0x1f],ARG2_REG);
         break;
     }
     switch(source[i]&0x3f)
@@ -4208,19 +4208,19 @@ static void float_assemble(int i,struct regstat *i_regs)
     {
       case 0x00: case 0x01: case 0x02: case 0x03:
         emit_addimm64(FP,fp_fcr31,ARG1_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],ARG3_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG4_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],ARG3_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG4_REG);
         break;
      case 0x04:
         emit_addimm64(FP,fp_fcr31,ARG1_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG3_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG2_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG3_REG);
         break;
      case 0x05: case 0x06: case 0x07:
         emit_addimm64(FP,fp_fcr31,ARG1_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
-        emit_readptr((intptr_t)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],ARG1_REG);
+        emit_readptr((intptr_t)&g_dev.r4300.recompiler_hot_state.cp1_regs_double[(source[i]>> 6)&0x1f],ARG2_REG);
         break;
     }
     switch(source[i]&0x3f)
@@ -4316,8 +4316,8 @@ static void multdiv_assemble_arm64(int i,struct regstat *i_regs)
         if(hi>=0) reglist&=~(1<<hi);
         if(lo>=0) reglist&=~(1<<lo);
 
-        emit_writeword(r1,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.rs);
-        emit_writeword(r2,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.rt);
+        emit_writeword(r1,(intptr_t)&g_dev.r4300.recompiler_hot_state.rs);
+        emit_writeword(r2,(intptr_t)&g_dev.r4300.recompiler_hot_state.rt);
 
         save_regs(reglist);
 
@@ -4453,10 +4453,10 @@ static void multdiv_assemble_arm64(int i,struct regstat *i_regs)
         if(loh>=0) reglist&=~(1<<loh);
         if(lol>=0) reglist&=~(1<<lol);
 
-        emit_writeword(r1l,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.rs);
-        emit_writeword(r1h,((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rs)+4);
-        emit_writeword(r2l,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.rt);
-        emit_writeword(r2h,((intptr_t)&g_dev.r4300.new_dynarec_hot_state.rt)+4);
+        emit_writeword(r1l,(intptr_t)&g_dev.r4300.recompiler_hot_state.rs);
+        emit_writeword(r1h,((intptr_t)&g_dev.r4300.recompiler_hot_state.rs)+4);
+        emit_writeword(r2l,(intptr_t)&g_dev.r4300.recompiler_hot_state.rt);
+        emit_writeword(r2h,((intptr_t)&g_dev.r4300.recompiler_hot_state.rt)+4);
 
         save_regs(reglist);
 
@@ -4531,8 +4531,8 @@ static void do_miniht_insert(u_int return_address,int rt,int temp) {
   emit_movk(return_address&0xffff,rt);
   add_to_linker((intptr_t)out,return_address,1);
   emit_adr((intptr_t)out,temp);
-  emit_writedword(temp,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.mini_ht[(return_address&0x1FF)>>4][1]);
-  emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.mini_ht[(return_address&0x1FF)>>4][0]);
+  emit_writedword(temp,(intptr_t)&g_dev.r4300.recompiler_hot_state.mini_ht[(return_address&0x1FF)>>4][1]);
+  emit_writeword(rt,(intptr_t)&g_dev.r4300.recompiler_hot_state.mini_ht[(return_address&0x1FF)>>4][0]);
 }
 
 // Clearing the cache is rather slow on ARM Linux, so mark the areas
@@ -4576,13 +4576,13 @@ static void invalidate_addr(u_int addr)
 static void arch_init(void) {
 
   assert((fp_memory_map&7)==0);
-  g_dev.r4300.new_dynarec_hot_state.rounding_modes[0]=0x0<<22; // round
-  g_dev.r4300.new_dynarec_hot_state.rounding_modes[1]=0x3<<22; // trunc
-  g_dev.r4300.new_dynarec_hot_state.rounding_modes[2]=0x1<<22; // ceil
-  g_dev.r4300.new_dynarec_hot_state.rounding_modes[3]=0x2<<22; // floor
+  g_dev.r4300.recompiler_hot_state.rounding_modes[0]=0x0<<22; // round
+  g_dev.r4300.recompiler_hot_state.rounding_modes[1]=0x3<<22; // trunc
+  g_dev.r4300.recompiler_hot_state.rounding_modes[2]=0x1<<22; // ceil
+  g_dev.r4300.recompiler_hot_state.rounding_modes[3]=0x2<<22; // floor
 
   #ifdef RAM_OFFSET
-  g_dev.r4300.new_dynarec_hot_state.ram_offset=((intptr_t)g_dev.rdram.dram-(intptr_t)0x80000000)>>2;
+  g_dev.r4300.recompiler_hot_state.ram_offset=((intptr_t)g_dev.rdram.dram-(intptr_t)0x80000000)>>2;
   #endif
 
   jump_table_symbols[0] = (intptr_t)cached_interp_TLBR;

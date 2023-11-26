@@ -22,6 +22,10 @@
 #ifndef M64P_DEVICE_RCP_MI_MI_CONTROLLER_H
 #define M64P_DEVICE_RCP_MI_MI_CONTROLLER_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 #include "osal/preproc.h"
@@ -64,10 +68,15 @@ void init_mi(struct mi_controller* mi, struct r4300_core* r4300);
 void poweron_mi(struct mi_controller* mi);
 
 void read_mi_regs(void* opaque, uint32_t address, uint32_t* value);
+uint32_t read_mi_regs_from_dynarec(void* opaque, uint32_t address);
 void write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
 void raise_rcp_interrupt(struct mi_controller* mi, uint32_t mi_intr);
 void signal_rcp_interrupt(struct mi_controller* mi, uint32_t mi_intr);
 void clear_rcp_interrupt(struct mi_controller* mi, uint32_t mi_intr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

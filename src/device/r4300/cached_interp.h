@@ -25,6 +25,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "idec.h"
 
 struct r4300_core;
@@ -307,5 +311,9 @@ void cached_interp_C_LE_S(void);
 void cached_interp_C_LE_D(void);
 void cached_interp_C_NGT_S(void);
 void cached_interp_C_NGT_D(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* M64P_DEVICE_R4300_CACHED_INTERP_H */

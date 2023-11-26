@@ -114,6 +114,7 @@ static int before_event(const struct cp0* cp0, unsigned int evt1, unsigned int e
 
 unsigned int add_random_interrupt_time(struct r4300_core* r4300)
 {
+#ifndef CORE_COMPARE
     if (r4300->randomize_interrupt) {
         unsigned int value;
 #ifdef __MINGW32__
@@ -124,6 +125,9 @@ unsigned int add_random_interrupt_time(struct r4300_core* r4300)
         return value % 0x40;
     } else
         return 0;
+#else
+    return 0;
+#endif
 }
 
 void add_interrupt_event(struct cp0* cp0, int type, unsigned int delay)
@@ -184,6 +188,7 @@ void add_interrupt_event_count(struct cp0* cp0, int type, unsigned int count)
             e->next = event;
         }
     }
+
     *cp0_next_interrupt = cp0->q.first->data.count;
     *cp0_cycle_count = cp0_regs[CP0_COUNT_REG] - cp0->q.first->data.count;
 }
@@ -260,7 +265,7 @@ void remove_event(struct interrupt_queue* q, int type)
         }
     }
 }
-
+#include <stdio.h>
 void translate_event_queue(struct cp0* cp0, unsigned int base)
 {
     struct node* e;
@@ -404,7 +409,6 @@ void compare_int_handler(void* opaque)
     *cp0_cycle_count += r4300->cp0.count_per_op;
     add_interrupt_event_count(&r4300->cp0, COMPARE_INT, cp0_regs[CP0_COMPARE_REG]);
     cp0_regs[CP0_COUNT_REG] -= r4300->cp0.count_per_op;
-
     /* Update next interrupt in case first event is COMPARE_INT */
     *cp0_cycle_count = cp0_regs[CP0_COUNT_REG] - r4300->cp0.q.first->data.count;
 
@@ -456,13 +460,13 @@ void nmi_int_handler(void* opaque)
     cp0_regs[CP0_ERROREPC_REG] = *r4300_pc(r4300);
     // reset the r4300 internal state
     invalidate_r4300_cached_code(r4300, 0, 0);
-    // adjust ErrorEPC if we were in a delay slot, and clear the r4300->delay_slot and r4300->recomp.dyna_interp flags
-    if(r4300->delay_slot==1 || r4300->delay_slot==3)
+    // adjust ErrorEPC if we were in a delay slot, and clear the (DELAY_SLOT(r4300)) and r4300->recomp.dyna_interp flags
+    if((DELAY_SLOT(r4300))==1 || (DELAY_SLOT(r4300))==3)
     {
         cp0_regs[CP0_ERROREPC_REG]-=4;
     }
-    r4300->delay_slot = 0;
-#ifndef NEW_DYNAREC
+    (DELAY_SLOT(r4300)) = 0;
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     r4300->recomp.dyna_interp = 0;
 #endif
     // set next instruction address to reset vector
@@ -477,7 +481,7 @@ void reset_hard_handler(void* opaque)
     struct device* dev = (struct device*)opaque;
     struct r4300_core* r4300 = &dev->r4300;
 
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 #if defined(__x86_64__)
     long long save_rsp = r4300->recomp.save_rsp;
     long long save_rip = r4300->recomp.save_rip;
@@ -502,9 +506,12 @@ void reset_hard_handler(void* opaque)
     *r4300_pc_struct(r4300) = &r4300->interp_PC;
     if (r4300->emumode >= 2)
     {
-#ifdef NEW_DYNAREC
+#if defined(NEW_DYNAREC)
         new_dynarec_cleanup();
         new_dynarec_init();
+#elif defined(VR4300_JITTER)
+        vr4300_jitter_cleanup();
+        vr4300_jitter_init();
 #else
 #if defined(__x86_64__)
         r4300->recomp.save_rsp = save_rsp;
@@ -542,7 +549,7 @@ void gen_interrupt(struct r4300_core* r4300)
     {
         g_gs_vi_counter = 0; // debug
 #ifndef NO_ASM
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
         dyna_stop(r4300);
 #endif
 #endif
@@ -580,7 +587,6 @@ void gen_interrupt(struct r4300_core* r4300)
         generic_jump_to(r4300, dest);
         return;
     }
-
     switch (r4300->cp0.q.first->data.type)
     {
         case VI_INT:

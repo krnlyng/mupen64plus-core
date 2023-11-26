@@ -25,6 +25,7 @@
 #include "instr_counters.h"
 #endif
 #include "new_dynarec/new_dynarec.h"
+#include "vr4300_jitter/vr4300_jitter.h"
 #include "pure_interp.h"
 #include "recomp.h"
 
@@ -43,19 +44,19 @@
 void init_r4300(struct r4300_core* r4300, struct memory* mem, struct mi_controller* mi, struct rdram* rdram, const struct interrupt_handler* interrupt_handlers,
     unsigned int emumode, unsigned int count_per_op, unsigned int count_per_op_denom_pot, int no_compiled_jump, int randomize_interrupt, uint32_t start_address)
 {
-    struct new_dynarec_hot_state* new_dynarec_hot_state =
-#ifdef NEW_DYNAREC
-        &r4300->new_dynarec_hot_state;
+    struct recompiler_hot_state* recompiler_hot_state =
+#if defined(NEW_DYNAREC) || defined(VR4300_JITTER)
+        &r4300->recompiler_hot_state;
 #else
         NULL;
 #endif
 
     r4300->emumode = emumode;
-    init_cp0(&r4300->cp0, count_per_op, count_per_op_denom_pot, new_dynarec_hot_state, interrupt_handlers);
-    init_cp1(&r4300->cp1, new_dynarec_hot_state);
-    init_cp2(&r4300->cp2, new_dynarec_hot_state);
+    init_cp0(&r4300->cp0, count_per_op, count_per_op_denom_pot, recompiler_hot_state, interrupt_handlers);
+    init_cp1(&r4300->cp1, recompiler_hot_state);
+    init_cp2(&r4300->cp2, recompiler_hot_state);
 
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     r4300->recomp.no_compiled_jump = no_compiled_jump;
 #endif
 
@@ -71,18 +72,21 @@ void poweron_r4300(struct r4300_core* r4300)
 {
     /* clear registers */
     memset(r4300_regs(r4300), 0, 32*sizeof(int64_t));
+#ifdef VR4300_JITTER
+    memset(&r4300->recompiler_hot_state.gprs_tmp[0], 0, 32*sizeof(int64_t));
+#endif
     *r4300_mult_hi(r4300) = 0;
     *r4300_mult_lo(r4300) = 0;
-    r4300->llbit = 0;
+    *r4300_llbit(r4300) = 0;
 
     *r4300_pc_struct(r4300) = NULL;
-    r4300->delay_slot = 0;
+    DELAY_SLOT(r4300) = 0;
     r4300->skip_jump = 0;
     r4300->reset_hard_job = 0;
 
 
     /* recomp init */
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     r4300->recomp.delay_slot_compiled = 0;
     r4300->recomp.fast_memory = 1;
     r4300->recomp.local_rs = 0;
@@ -111,7 +115,7 @@ void poweron_r4300(struct r4300_core* r4300)
 #endif
 
     r4300->recomp.branch_taken = 0;
-#endif /* !NEW_DYNAREC */
+#endif /* !NEW_DYNAREC && !VR4300_JITTER */
 
     /* setup CP0 registers */
     poweron_cp0(&r4300->cp0);
@@ -153,10 +157,14 @@ void run_r4300(struct r4300_core* r4300)
         DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Dynamic Recompiler");
         r4300->emumode = EMUMODE_DYNAREC;
         init_blocks(&r4300->cached_interp);
-#ifdef NEW_DYNAREC
+#if defined(NEW_DYNAREC)
         new_dynarec_init();
         new_dyna_start();
         new_dynarec_cleanup();
+#elif defined(VR4300_JITTER)
+        vr4300_jitter_init();
+        vr4300_jitter_start();
+        vr4300_jitter_cleanup();
 #else
         r4300->cached_interp.fin_block = dynarec_fin_block;
         r4300->cached_interp.not_compiled = dynarec_notcompiled;
@@ -215,43 +223,75 @@ void run_r4300(struct r4300_core* r4300)
 #endif
 }
 
+unsigned int *r4300_delay_slot(struct r4300_core* r4300)
+{
+#if defined(VR4300_JITTER)
+    return &r4300->recompiler_hot_state.delay_slot;
+#else
+    return &r4300->delay_slot;
+#endif
+}
+
 int64_t* r4300_regs(struct r4300_core* r4300)
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     return r4300->regs;
 #else
-    return r4300->new_dynarec_hot_state.regs;
+    return r4300->recompiler_hot_state.regs;
 #endif
 }
 
 int64_t* r4300_mult_hi(struct r4300_core* r4300)
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     return &r4300->hi;
 #else
-    return &r4300->new_dynarec_hot_state.hi;
+    return &r4300->recompiler_hot_state.hi;
 #endif
 }
 
 int64_t* r4300_mult_lo(struct r4300_core* r4300)
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     return &r4300->lo;
 #else
-    return &r4300->new_dynarec_hot_state.lo;
+    return &r4300->recompiler_hot_state.lo;
 #endif
 }
 
 unsigned int* r4300_llbit(struct r4300_core* r4300)
 {
+#if defined(VR4300_JITTER)
+    return &r4300->recompiler_hot_state.llbit;
+#else
     return &r4300->llbit;
+#endif
 }
 
 uint32_t* r4300_pc(struct r4300_core* r4300)
 {
-#ifdef NEW_DYNAREC
+#if defined(NEW_DYNAREC)
     return (r4300->emumode == EMUMODE_DYNAREC)
-        ? (uint32_t*)&r4300->new_dynarec_hot_state.pcaddr
+        ? (uint32_t*)&r4300->recompiler_hot_state.pcaddr
+        : &(*r4300_pc_struct(r4300))->addr;
+#elif defined(VR4300_JITTER)
+    return (r4300->emumode == EMUMODE_DYNAREC)
+        ? (uint32_t*)&r4300->recompiler_hot_state.pc
+        : &(*r4300_pc_struct(r4300))->addr;
+#else
+    return &(*r4300_pc_struct(r4300))->addr;
+#endif
+}
+
+uint32_t* r4300_dbg_pc(struct r4300_core* r4300)
+{
+#if defined(NEW_DYNAREC)
+    return (r4300->emumode == EMUMODE_DYNAREC)
+        ? (uint32_t*)&r4300->recompiler_hot_state.pcaddr
+        : &(*r4300_pc_struct(r4300))->addr;
+#elif defined(VR4300_JITTER)
+    return (r4300->emumode == EMUMODE_DYNAREC)
+        ? (uint32_t*)&r4300->recompiler_hot_state.dbg_pc
         : &(*r4300_pc_struct(r4300))->addr;
 #else
     return &(*r4300_pc_struct(r4300))->addr;
@@ -260,19 +300,21 @@ uint32_t* r4300_pc(struct r4300_core* r4300)
 
 struct precomp_instr** r4300_pc_struct(struct r4300_core* r4300)
 {
-#ifndef NEW_DYNAREC
-    return &r4300->pc;
+#if defined(NEW_DYNAREC)
+    return &r4300->recompiler_hot_state.pc;
+#elif defined(VR4300_JITTER)
+    return &r4300->recompiler_hot_state.fake_pc;
 #else
-    return &r4300->new_dynarec_hot_state.pc;
+    return &r4300->pc;
 #endif
 }
 
 int* r4300_stop(struct r4300_core* r4300)
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     return &r4300->stop;
 #else
-    return &r4300->new_dynarec_hot_state.stop;
+    return &r4300->recompiler_hot_state.stop;
 #endif
 }
 
@@ -409,10 +451,14 @@ void invalidate_r4300_cached_code(struct r4300_core* r4300, uint32_t address, si
 {
     if (r4300->emumode != EMUMODE_PURE_INTERPRETER)
     {
-#ifdef NEW_DYNAREC
+#if defined(NEW_DYNAREC) || defined(VR4300_JITTER)
         if (r4300->emumode == EMUMODE_DYNAREC)
         {
+#if defined(NEW_DYNAREC)
             invalidate_cached_code_new_dynarec(r4300, address, size);
+#else
+            vr4300_jitter_invalidate_cached_code(r4300, address, size);
+#endif
         }
         else
 #endif
@@ -437,9 +483,14 @@ void generic_jump_to(struct r4300_core* r4300, uint32_t address)
 
 #ifndef NO_ASM
     case EMUMODE_DYNAREC:
-#ifdef NEW_DYNAREC
-        r4300->new_dynarec_hot_state.pcaddr = address;
-        r4300->new_dynarec_hot_state.pending_exception = 1;
+#if defined(NEW_DYNAREC)
+        r4300->recompiler_hot_state.pcaddr = address;
+        r4300->recompiler_hot_state.pending_exception = 1;
+#elif defined(VR4300_JITTER)
+        r4300->recompiler_hot_state.pc = address;
+#if COMPARE_CORE
+        r4300->recompiler_hot_state.dbg_pc = address;
+#endif
 #else
         dynarec_jump_to(r4300, address);
 #endif

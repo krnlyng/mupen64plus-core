@@ -228,7 +228,11 @@ static m64p_error plugin_connect_gfx(m64p_dynlib_handle plugin_handle)
 
 static m64p_error plugin_start_gfx(void)
 {
+#ifdef VR4300_JITTER
+    uint8_t media = *(vr4300_jitter_get_logical_memory(MM_CART_ROM) + (0x3b ^ S8));
+#else
     uint8_t media = *((uint8_t*)mem_base_u32(g_mem_base, MM_CART_ROM) + (0x3b ^ S8));
+#endif
 
     /* Here we feed 64DD IPL ROM header to GFX plugin if 64DD is present.
      * We use g_media_loader.get_dd_rom to detect 64DD presence
@@ -246,10 +250,17 @@ static m64p_error plugin_start_gfx(void)
     free(dd_ipl_rom_filename);
 
     /* fill in the GFX_INFO data structure */
+#ifdef VR4300_JITTER
+    gfx_info.HEADER = (unsigned char *)vr4300_jitter_get_logical_memory(rom_base);
+    gfx_info.RDRAM = (unsigned char *)vr4300_jitter_get_logical_memory(MM_RDRAM_DRAM);
+    gfx_info.DMEM = (unsigned char *)vr4300_jitter_get_logical_memory(MM_RSP_MEM);
+    gfx_info.IMEM = (unsigned char *)vr4300_jitter_get_logical_memory(MM_RSP_MEM) + 0x1000;
+#else
     gfx_info.HEADER = (unsigned char *)mem_base_u32(g_mem_base, rom_base);
     gfx_info.RDRAM = (unsigned char *)mem_base_u32(g_mem_base, MM_RDRAM_DRAM);
     gfx_info.DMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM);
     gfx_info.IMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM + 0x1000);
+#endif
     gfx_info.MI_INTR_REG = &(g_dev.mi.regs[MI_INTR_REG]);
     gfx_info.DPC_START_REG = &(g_dev.dp.dpc_regs[DPC_START_REG]);
     gfx_info.DPC_END_REG = &(g_dev.dp.dpc_regs[DPC_END_REG]);
@@ -343,9 +354,15 @@ static m64p_error plugin_connect_audio(m64p_dynlib_handle plugin_handle)
 static m64p_error plugin_start_audio(void)
 {
     /* fill in the AUDIO_INFO data structure */
+#ifdef VR4300_JITTER
+    audio_info.RDRAM = (unsigned char *)vr4300_jitter_get_logical_memory(MM_RDRAM_DRAM);
+    audio_info.DMEM = (unsigned char *)vr4300_jitter_get_logical_memory(MM_RSP_MEM);
+    audio_info.IMEM = (unsigned char *)vr4300_jitter_get_logical_memory(MM_RSP_MEM) + 0x1000;
+#else
     audio_info.RDRAM = (unsigned char *)mem_base_u32(g_mem_base, MM_RDRAM_DRAM);
     audio_info.DMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM);
     audio_info.IMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM + 0x1000);
+#endif
     audio_info.MI_INTR_REG = &(g_dev.mi.regs[MI_INTR_REG]);
     audio_info.AI_DRAM_ADDR_REG = &(g_dev.ai.regs[AI_DRAM_ADDR_REG]);
     audio_info.AI_LEN_REG = &(g_dev.ai.regs[AI_LEN_REG]);
@@ -492,9 +509,15 @@ static m64p_error plugin_connect_rsp(m64p_dynlib_handle plugin_handle)
 static m64p_error plugin_start_rsp(void)
 {
     /* fill in the RSP_INFO data structure */
+#ifdef VR4300_JITTER
+    rsp_info.RDRAM = (unsigned char *)vr4300_jitter_get_logical_memory(MM_RDRAM_DRAM);
+    rsp_info.DMEM = (unsigned char *)vr4300_jitter_get_logical_memory(MM_RSP_MEM);
+    rsp_info.IMEM = (unsigned char *)vr4300_jitter_get_logical_memory(MM_RSP_MEM) + 0x1000;
+#else
     rsp_info.RDRAM = (unsigned char *)mem_base_u32(g_mem_base, MM_RDRAM_DRAM);
     rsp_info.DMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM);
     rsp_info.IMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM + 0x1000);
+#endif
     rsp_info.MI_INTR_REG = &g_dev.mi.regs[MI_INTR_REG];
     rsp_info.SP_MEM_ADDR_REG = &g_dev.sp.regs[SP_MEM_ADDR_REG];
     rsp_info.SP_DRAM_ADDR_REG = &g_dev.sp.regs[SP_DRAM_ADDR_REG];

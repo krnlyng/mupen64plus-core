@@ -70,10 +70,10 @@ section .note.GNU-stack noalloc noexec nowrite progbits
 %define CCREG ebx
 %endif
 
-%define g_dev_r4300_new_dynarec_hot_state_stop              (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_stop)
-%define g_dev_r4300_new_dynarec_hot_state_cycle_count       (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_cycle_count)
-%define g_dev_r4300_new_dynarec_hot_state_pending_exception (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_pending_exception)
-%define g_dev_r4300_new_dynarec_hot_state_pcaddr            (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_pcaddr)
+%define g_dev_r4300_recompiler_hot_state_stop              (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_recompiler_hot_state + offsetof_struct_recompiler_hot_state_stop)
+%define g_dev_r4300_recompiler_hot_state_cycle_count       (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_recompiler_hot_state + offsetof_struct_recompiler_hot_state_cycle_count)
+%define g_dev_r4300_recompiler_hot_state_pending_exception (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_recompiler_hot_state + offsetof_struct_recompiler_hot_state_pending_exception)
+%define g_dev_r4300_recompiler_hot_state_pcaddr            (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_recompiler_hot_state + offsetof_struct_recompiler_hot_state_pcaddr)
 
 cglobal jump_vaddr_eax
 cglobal jump_vaddr_ecx
@@ -176,13 +176,13 @@ _D1:
     jmp     rax
 
 cc_interrupt:
-    mov     DWORD[rel g_dev_r4300_new_dynarec_hot_state_cycle_count],    CCREG
+    mov     DWORD[rel g_dev_r4300_recompiler_hot_state_cycle_count],    CCREG
     add     rsp,    -56 ;Align stack
-    mov     DWORD [rel g_dev_r4300_new_dynarec_hot_state_pending_exception],    0
+    mov     DWORD [rel g_dev_r4300_recompiler_hot_state_pending_exception],    0
     call    dynarec_gen_interrupt
-    mov     CCREG,    DWORD[rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
-    mov     ecx,    DWORD[rel g_dev_r4300_new_dynarec_hot_state_pending_exception]
-    mov     edx,    DWORD[rel g_dev_r4300_new_dynarec_hot_state_stop]
+    mov     CCREG,    DWORD[rel g_dev_r4300_recompiler_hot_state_cycle_count]
+    mov     ecx,    DWORD[rel g_dev_r4300_recompiler_hot_state_pending_exception]
+    mov     edx,    DWORD[rel g_dev_r4300_recompiler_hot_state_stop]
     add     rsp,    56
     test    edx,    edx
     jne     _E2
@@ -191,7 +191,7 @@ cc_interrupt:
     ret
 _E1:
     add     rsp,    -8
-    mov     ARG1_REG,    DWORD[rel g_dev_r4300_new_dynarec_hot_state_pcaddr]
+    mov     ARG1_REG,    DWORD[rel g_dev_r4300_recompiler_hot_state_pcaddr]
     call    get_addr_ht
     add     rsp,    16
     jmp     rax
@@ -214,28 +214,28 @@ new_dyna_stop:
     ret             ;exit dynarec
 
 do_interrupt:
-    mov     edx,    DWORD[rel g_dev_r4300_new_dynarec_hot_state_stop]
+    mov     edx,    DWORD[rel g_dev_r4300_recompiler_hot_state_stop]
     test    edx,    edx
     jne     new_dyna_stop
-    mov     ARG1_REG,    [rel g_dev_r4300_new_dynarec_hot_state_pcaddr]
+    mov     ARG1_REG,    [rel g_dev_r4300_recompiler_hot_state_pcaddr]
     call    get_addr_ht
-    mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
+    mov     CCREG,    [rel g_dev_r4300_recompiler_hot_state_cycle_count]
     jmp     rax
 
 fp_exception:
-    mov     DWORD[rel g_dev_r4300_new_dynarec_hot_state_pcaddr],    eax
+    mov     DWORD[rel g_dev_r4300_recompiler_hot_state_pcaddr],    eax
     call    cop1_unusable
     jmp     rax
 
 jump_syscall:
-    mov     DWORD[rel g_dev_r4300_new_dynarec_hot_state_pcaddr],    eax
+    mov     DWORD[rel g_dev_r4300_recompiler_hot_state_pcaddr],    eax
     call    SYSCALL_new
     jmp     rax
 
 jump_eret:
-    mov     DWORD[rel g_dev_r4300_new_dynarec_hot_state_cycle_count],    CCREG
+    mov     DWORD[rel g_dev_r4300_recompiler_hot_state_cycle_count],    CCREG
     call    ERET_new
-    mov     CCREG,    DWORD[rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
+    mov     CCREG,    DWORD[rel g_dev_r4300_recompiler_hot_state_cycle_count]
     test    rax,    rax
     je      new_dyna_stop
     jmp     rax
@@ -263,7 +263,7 @@ new_dyna_start:
     add     rsp,    -56
     mov     ARG1_REG,    0a4000040h
     call    new_recompile_block
-    mov     CCREG,    DWORD [rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
+    mov     CCREG,    DWORD [rel g_dev_r4300_recompiler_hot_state_cycle_count]
     mov     rax,    QWORD[rel base_addr]
     jmp     rax
 

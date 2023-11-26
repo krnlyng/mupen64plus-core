@@ -166,7 +166,11 @@ void init_device(struct device* dev,
 
         init_dd(&dev->dd,
                 dd_rtc_clock, dd_rtc_iclock,
+#ifdef VR4300_JITTER
+                (uint32_t*)vr4300_jitter_get_logical_memory(MM_DD_ROM), dd_rom_size,
+#else
                 mem_base_u32(base, MM_DD_ROM), dd_rom_size,
+#endif
                 dd_disk, dd_idisk,
                 &dev->r4300);
     }
@@ -179,12 +183,20 @@ void init_device(struct device* dev,
 
     init_memory(&dev->mem, mappings, ARRAY_SIZE(mappings), base, &dbg_handler);
 
+#ifdef VR4300_JITTER
+    init_rdram(&dev->rdram, (uint32_t*)vr4300_jitter_get_logical_memory(MM_RDRAM_DRAM), dram_size, &dev->r4300);
+#else
     init_rdram(&dev->rdram, mem_base_u32(base, MM_RDRAM_DRAM), dram_size, &dev->r4300);
+#endif
 
     init_r4300(&dev->r4300, &dev->mem, &dev->mi, &dev->rdram, interrupt_handlers,
             emumode, count_per_op, count_per_op_denom_pot, no_compiled_jump, randomize_interrupt, start_address);
     init_rdp(&dev->dp, &dev->sp, &dev->mi, &dev->mem, &dev->rdram, &dev->r4300);
+#ifdef VR4300_JITTER
+    init_rsp(&dev->sp, (uint32_t*)vr4300_jitter_get_logical_memory(MM_RSP_MEM), &dev->mi, &dev->dp, &dev->ri);
+#else
     init_rsp(&dev->sp, mem_base_u32(base, MM_RSP_MEM), &dev->mi, &dev->dp, &dev->ri);
+#endif
     init_ai(&dev->ai, &dev->mi, &dev->ri, &dev->vi, aout, iaout, dma_modifier);
     init_mi(&dev->mi, &dev->r4300);
     init_pi(&dev->pi,
@@ -199,21 +211,37 @@ void init_device(struct device* dev,
      * use CART unless DD is plugged and the plugged CART is not a combo media (cart+disk),
      * or rom_size is 0 meaning there's no CART loaded
      */
+#ifdef VR4300_JITTER
+    uint8_t media = *(vr4300_jitter_get_logical_memory(MM_CART_ROM) + (0x3b ^ S8));
+#else
     uint8_t media = *((uint8_t*)mem_base_u32(base, MM_CART_ROM) + (0x3b ^ S8));
+#endif
     uint32_t rom_base = (rom_size == 0 || (dd_rom_size > 0 && media != 'C'))
         ? MM_DD_ROM
         : MM_CART_ROM;
 
     init_pif(&dev->pif,
+#ifdef VR4300_JITTER
+        vr4300_jitter_get_logical_memory(MM_PIF_MEM),
+#else
         (uint8_t*)mem_base_u32(base, MM_PIF_MEM),
+#endif
         jbds, ijbds,
+#ifdef VR4300_JITTER
+        vr4300_jitter_get_logical_memory(rom_base) + 0x40,
+#else
         (uint8_t*)mem_base_u32(base, rom_base) + 0x40,
+#endif
         &dev->r4300,
         &dev->si);
 
     init_cart(&dev->cart,
             af_rtc_clock, iaf_rtc_clock,
+#ifdef VR4300_JITTER
+            vr4300_jitter_get_logical_memory(MM_CART_ROM), rom_size,
+#else
             (uint8_t*)mem_base_u32(base, MM_CART_ROM), rom_size,
+#endif
             &dev->r4300,
             &dev->pi,
             eeprom_type, eeprom_storage, ieeprom_storage,

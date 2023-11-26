@@ -272,8 +272,10 @@ ifeq ($(PIC), 1)
   ASFLAGS += -d PIC
 endif
 
+ifneq ($(VR4300_JITTER), 1)
 # assembler also needs base include directories
 ASFLAGS += -I$(SRCDIR) -I$(SRCDIR)/asm_defines/
+endif
 
 ifeq ($(CPU_ENDIANNESS), BIG)
   CFLAGS += -DM64P_BIG_ENDIAN
@@ -670,6 +672,11 @@ ifneq ($(DYNAREC), )
   CFLAGS += -DDYNAREC
 
   ifeq ($(NEW_DYNAREC), 1)
+    ifeq ($(VR4300_JITTER), 1)
+        $(error NEW_DYNAREC and VR4300_JITTER can't be used at the same time)
+    endif
+  endif
+  ifeq ($(NEW_DYNAREC), 1)
     ifeq ($(DYNAREC), x86)
       CFLAGS += -DNEW_DYNAREC=1
       SOURCE += \
@@ -694,12 +701,37 @@ ifneq ($(DYNAREC), )
     SOURCE += \
       $(SRCDIR)/device/r4300/new_dynarec/new_dynarec.c
   else
-    SOURCE += \
-      $(SRCDIR)/device/r4300/recomp.c \
-      $(SRCDIR)/device/r4300/$(DYNAREC)/assemble.c \
-      $(SRCDIR)/device/r4300/$(DYNAREC)/dynarec.c \
-      $(SRCDIR)/device/r4300/$(DYNAREC)/regcache.c \
-      $(SRCDIR)/device/r4300/$(DYNAREC)/dyna_start.asm
+    ifeq ($(VR4300_JITTER), 1)
+      CFLAGS+=-DVR4300_JITTER=1 -I$(SRCDIR)/device/r4300/vr4300_jitter
+      CPPFLAGS+=-DVR4300_JITTER=1 -I$(SRCDIR)/device/r4300/vr4300_jitter
+      CXXFLAGS+=-DVR4300_JITTER=1 -I$(SRCDIR)/device/r4300/vr4300_jitter -std=c++20
+      SOURCE += \
+        $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter_float.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter_branch.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter_integer.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter_instruction_decoder.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/Common/x64Emitter.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/Common/MemArenaUnix.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/Common/x64ABI.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/Common/x64CPUDetect.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/Common/StringUtil.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/Common/MemoryUtil.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/Common/CommonFuncs.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/RegCache/FPURegCache.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/RegCache/GPRRegCache.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/RegCache/JitRegCache.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/Common/JitRegister.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/JitCache.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/ConstantPool.cpp
+    else
+      SOURCE += \
+        $(SRCDIR)/device/r4300/recomp.c \
+        $(SRCDIR)/device/r4300/$(DYNAREC)/assemble.c \
+        $(SRCDIR)/device/r4300/$(DYNAREC)/dynarec.c \
+        $(SRCDIR)/device/r4300/$(DYNAREC)/regcache.c \
+        $(SRCDIR)/device/r4300/$(DYNAREC)/dyna_start.asm
+    endif
   endif
 endif
 
@@ -748,7 +780,9 @@ endif
 # generate a list of object files to build, make a temporary directory for them
 OBJECTS := $(patsubst $(SRCDIR)/%.c,   $(OBJDIR)/%.o, $(filter $(SRCDIR)/%.c,   $(SOURCE)))
 OBJECTS += $(patsubst $(SUBDIR)/%.c,   $(OBJDIR)/subprojects/%.o, $(filter $(SUBDIR)/%.c,   $(SOURCE)))
+ifneq ($(VR4300_JITTER), 1)
 OBJECTS += $(patsubst $(SRCDIR)/%.c,   $(OBJDIR)/%.o, $(SRCDIR)/asm_defines/asm_defines.c)
+endif
 OBJECTS += $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(filter $(SRCDIR)/%.cpp, $(SOURCE)))
 OBJECTS += $(patsubst $(SUBDIR)/%.cpp, $(OBJDIR)/subprojects/%.o, $(filter $(SUBDIR)/%.cpp, $(SOURCE)))
 OBJECTS += $(patsubst $(SRCDIR)/%.S, $(OBJDIR)/%.o, $(filter %.S, $(SOURCE)))
@@ -756,53 +790,56 @@ OBJECTS += $(patsubst $(SRCDIR)/%.asm, $(OBJDIR)/%.o, $(filter %.asm, $(SOURCE))
 OBJDIRS = $(dir $(OBJECTS))
 $(shell $(MKDIR) $(OBJDIRS))
 
+ifneq ($(VR4300_JITTER), 1)
 # we have a special object file for the new dynarec
 ASM_DEFINES_OBJ = $(OBJDIR)/asm_defines/asm_defines.o
+endif
 
 # build targets
 targets:
 	@echo "Mupen64Plus-core makefile."
 	@echo "  Targets:"
-	@echo "    all            == Build Mupen64Plus core library"
-	@echo "    clean          == remove object files"
-	@echo "    install        == Install Mupen64Plus core library"
-	@echo "    uninstall      == Uninstall Mupen64Plus core library"
+	@echo "    all             == Build Mupen64Plus core library"
+	@echo "    clean           == remove object files"
+	@echo "    install         == Install Mupen64Plus core library"
+	@echo "    uninstall       == Uninstall Mupen64Plus core library"
 	@echo "  Build Options:"
-	@echo "    BITS=32        == build 32-bit binaries on 64-bit machine"
-	@echo "    LIRC=1         == enable LIRC support"
-	@echo "    NO_ASM=1       == build without assembly (no dynamic recompiler or MMX/SSE code)"
-	@echo "    USE_GLES=1     == build against GLESv2 instead of OpenGL"
-	@echo "    VC=1           == build against Broadcom Videocore GLESv2"
-	@echo "    NEON=1         == (ARM only) build for hard floating point environments"
-	@echo "    VFP_HARD=1     == (ARM only) full hardware floating point ABI"
-	@echo "    SHAREDIR=path  == extra path to search for shared data files"
-	@echo "    OPTFLAGS=flag  == compiler optimization (default: -O3 -flto)"
-	@echo "    WARNFLAGS=flag == compiler warning levels (default: -Wall)"
-	@echo "    PIC=(1|0)      == Force enable/disable of position independent code"
-	@echo "    OSD=(1|0)      == Enable/disable build of OpenGL On-screen display"
-	@echo "    NETPLAY=1      == Enable netplay functionality, requires SDL2_net"
-	@echo "    NEW_DYNAREC=1  == Replace dynamic recompiler with Ari64's experimental dynarec"
-	@echo "    KEYBINDINGS=0  == Disables the default keybindings"
-	@echo "    ACCURATE_FPU=1 == Enables accurate FPU behavior (i.e correct cause bits)"
-	@echo "    OPENCV=1       == Enable OpenCV support"
-	@echo "    VULKAN=0       == Disable vulkan support for the default video extension implementation"
-	@echo "    POSTFIX=name   == String added to the name of the the build (default: '')"
-	@echo "  Install Options:"
-	@echo "    PREFIX=path    == install/uninstall prefix (default: /usr/local)"
-	@echo "    SHAREDIR=path  == path to install shared data files (default: PREFIX/share/mupen64plus)"
-	@echo "    LIBDIR=path    == path to install core library (default: PREFIX/lib)"
-	@echo "    INCDIR=path    == path to install core header files (default: PREFIX/include/mupen64plus)"
-	@echo "    DESTDIR=path   == path to prepend to all installation paths (only for packagers)"
-	@echo "  Debugging Options:"
-	@echo "    PROFILE=1      == build gprof instrumentation into binaries for profiling"
-	@echo "    DEBUG=1        == add debugging symbols to binaries"
-	@echo "    DEBUGGER=1     == build debugger API into core for front-ends.  runs slower."
-	@echo "    DBG_CORE=1     == print debugging info in r4300 core"
-	@echo "    DBG_COUNT=1    == print R4300 instruction count totals (64-bit dynarec only)"
-	@echo "    DBG_COMPARE=1  == enable core-synchronized r4300 debugging"
-	@echo "    DBG_TIMING=1   == print timing data"
-	@echo "    DBG_PROFILE=1  == dump profiling data for r4300 dynarec to data file"
-	@echo "    V=1            == show verbose compiler output"
+	@echo "    BITS=32         == build 32-bit binaries on 64-bit machine"
+	@echo "    LIRC=1          == enable LIRC support"
+	@echo "    NO_ASM=1        == build without assembly (no dynamic recompiler or MMX/SSE code)"
+	@echo "    USE_GLES=1      == build against GLESv2 instead of OpenGL"
+	@echo "    VC=1            == build against Broadcom Videocore GLESv2"
+	@echo "    NEON=1          == (ARM only) build for hard floating point environments"
+	@echo "    VFP_HARD=1      == (ARM only) full hardware floating point ABI"
+	@echo "    SHAREDIR=path   == extra path to search for shared data files"
+	@echo "    OPTFLAGS=flag   == compiler optimization (default: -O3 -flto)"
+	@echo "    WARNFLAGS=flag  == compiler warning levels (default: -Wall)"
+	@echo "    PIC=(1|0)       == Force enable/disable of position independent code"
+	@echo "    OSD=(1|0)       == Enable/disable build of OpenGL On-screen display"
+	@echo "    NETPLAY=1       == Enable netplay functionality, requires SDL2_net"
+	@echo "    NEW_DYNAREC=1   == Replace dynamic recompiler with Ari64's experimental dynarec"
+	@echo "    VR4300_JITTER=1 == Replace dynamic recompiler with VR4300_JITTER (currently x64_64 only)"
+	@echo "    KEYBINDINGS=0   == Disables the default keybindings"
+	@echo "    ACCURATE_FPU=1  == Enables accurate FPU behavior (i.e correct cause bits)"
+	@echo "    OPENCV=1        == Enable OpenCV support"
+	@echo "    VULKAN=0        == Disable vulkan support for the default video extension implementation"
+	@echo "    POSTFIX=name    == String added to the name of the the build (default: '')"
+	@echo "  Install Options: "
+	@echo "    PREFIX=path     == install/uninstall prefix (default: /usr/local)"
+	@echo "    SHAREDIR=path   == path to install shared data files (default: PREFIX/share/mupen64plus)"
+	@echo "    LIBDIR=path     == path to install core library (default: PREFIX/lib)"
+	@echo "    INCDIR=path     == path to install core header files (default: PREFIX/include/mupen64plus)"
+	@echo "    DESTDIR=path    == path to prepend to all installation paths (only for packagers)"
+	@echo "  Debugging Option s:"
+	@echo "    PROFILE=1       == build gprof instrumentation into binaries for profiling"
+	@echo "    DEBUG=1         == add debugging symbols to binaries"
+	@echo "    DEBUGGER=1      == build debugger API into core for front-ends.  runs slower."
+	@echo "    DBG_CORE=1      == print debugging info in r4300 core"
+	@echo "    DBG_COUNT=1     == print R4300 instruction count totals (64-bit dynarec only)"
+	@echo "    DBG_COMPARE=1   == enable core-synchronized r4300 debugging"
+	@echo "    DBG_TIMING=1    == print timing data"
+	@echo "    DBG_PROFILE=1   == dump profiling data for r4300 dynarec to data file"
+	@echo "    V=1             == show verbose compiler output"
 
 all: $(TARGET)
 
@@ -824,8 +861,13 @@ uninstall:
 	$(RM) "$(DESTDIR)$(SHAREDIR)/font.ttf"
 	$(RM) "$(DESTDIR)$(SHAREDIR)/mupencheat.txt"
 
+RM_FILES := _obj $(OBJDIR) $(TARGET) $(SONAME)
+ifneq ($(VR4300_JITTER), 1)
+RM_FILES += $(SRCDIR)/asm_defines/asm_defines_*.h
+endif
+
 clean:
-	$(RM) -r _obj $(OBJDIR) $(TARGET) $(SONAME) $(SRCDIR)/asm_defines/asm_defines_*.h
+	$(RM) -r $(RM_FILES)
 
 # build dependency files
 CFLAGS += -MD -MP
@@ -833,6 +875,7 @@ CFLAGS += -MD -MP
 
 CXXFLAGS += $(CFLAGS)
 
+ifneq ($(VR4300_JITTER), 1)
 # It is important to disable LTO for this object file
 # otherwise we can't extract usefull information from it.
 $(ASM_DEFINES_OBJ): $(SRCDIR)/asm_defines/asm_defines.c
@@ -849,6 +892,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.asm $(SRCDIR)/asm_defines/asm_defines_nasm.h
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.S $(SRCDIR)/asm_defines/asm_defines_gas.h
 	$(COMPILE.c) -o $@ $<
+endif
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	$(COMPILE.c) -o $@ $<

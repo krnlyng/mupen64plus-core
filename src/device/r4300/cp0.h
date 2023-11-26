@@ -112,7 +112,7 @@ enum r4300_cp0_registers
     CP0_WIRED_REG,
     CP0_UNUSED_7,
     CP0_BADVADDR_REG,
-    CP0_COUNT_REG,
+    CP0_COUNT_REG, 
     CP0_ENTRYHI_REG,
     CP0_COMPARE_REG,
     CP0_STATUS_REG,
@@ -182,7 +182,7 @@ enum {
 
 struct cp0
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 	/* New dynarec uses a different memory layout */
     uint32_t regs[CP0_REGS_COUNT];
     uint64_t latch;
@@ -193,18 +193,23 @@ struct cp0
     unsigned int interrupt_unsafe_state;
 
     struct interrupt_queue q;
+#if !defined(VR4300_JITTER)
     unsigned int next_interrupt;
+#endif
 
-#ifndef NEW_DYNAREC
-	/* New dynarec uses a different memory layout */
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     int cycle_count;
 #endif
 
     struct interrupt_handler interrupt_handlers[CP0_INTERRUPT_HANDLERS_COUNT];
 
-#ifdef NEW_DYNAREC
+#if defined(NEW_DYNAREC)
 	/* New dynarec uses a different memory layout */
-    struct new_dynarec_hot_state* new_dynarec_hot_state;
+    struct recompiler_hot_state* recompiler_hot_state;
+#endif
+
+#if defined(VR4300_JITTER)
+    struct recompiler_hot_state* recompiler_hot_state;
 #endif
 
     uint32_t last_addr;
@@ -214,17 +219,17 @@ struct cp0
     struct tlb tlb;
 };
 
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 #define R4300_CP0_REGS_OFFSET (\
     offsetof(struct r4300_core, cp0) + \
     offsetof(struct cp0, regs))
 #else
 #define R4300_CP0_REGS_OFFSET (\
-    offsetof(struct r4300_core, new_dynarec_hot_state) + \
-    offsetof(struct new_dynarec_hot_state, cp0_regs))
+    offsetof(struct r4300_core, recompiler_hot_state) + \
+    offsetof(struct recompiler_hot_state, cp0_regs))
 #endif
 
-void init_cp0(struct cp0* cp0, unsigned int count_per_op, unsigned int count_per_op_denom_pot, struct new_dynarec_hot_state* new_dynarec_hot_state, const struct interrupt_handler* interrupt_handlers);
+void init_cp0(struct cp0* cp0, unsigned int count_per_op, unsigned int count_per_op_denom_pot, struct recompiler_hot_state* recompiler_hot_state, const struct interrupt_handler* interrupt_handlers);
 void poweron_cp0(struct cp0* cp0);
 
 uint32_t* r4300_cp0_regs(struct cp0* cp0);

@@ -22,6 +22,10 @@
 #ifndef M64P_DEVICE_MEMORY_MEMORY_H
 #define M64P_DEVICE_MEMORY_MEMORY_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -102,6 +106,10 @@ void deactivate_memory_break_read(struct memory* mem, uint32_t address);
 void activate_memory_break_write(struct memory* mem, uint32_t address);
 void deactivate_memory_break_write(struct memory* mem, uint32_t address);
 int get_memory_type(struct memory* mem, uint32_t address);
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

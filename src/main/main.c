@@ -1658,7 +1658,11 @@ m64p_error main_run(void)
 #if !defined(M64P_BIG_ENDIAN)
     if (g_RomWordsLittleEndian == 0)
     {
+#ifdef VR4300_JITTER
+        swap_buffer((uint32_t*)vr4300_jitter_get_logical_memory(MM_CART_ROM), 4, g_rom_size/4);
+#else
         swap_buffer((uint8_t*)mem_base_u32(g_mem_base, MM_CART_ROM), 4, g_rom_size/4);
+#endif
         g_RomWordsLittleEndian = 1;
     }
 #endif
@@ -2097,7 +2101,11 @@ m64p_error open_pif(const unsigned char* pifimage, unsigned int size)
     md5_byte_t pif_ntsc_md5[] = {0x5C, 0x12, 0x4E, 0x79, 0x48, 0xAD, 0xA8, 0x5D, 0xA6, 0x03, 0xA5, 0x22, 0x78, 0x29, 0x40, 0xD0};
     md5_byte_t pif_pal_md5[]  = {0xD4, 0x23, 0x2D, 0xC9, 0x35, 0xCA, 0xD0, 0x65, 0x0A, 0xC2, 0x66, 0x4D, 0x52, 0x28, 0x1F, 0x3A};
 
+#ifdef VR4300_JITTER
+    uint32_t *dst32 = (uint32_t*)vr4300_jitter_get_logical_memory(MM_PIF_MEM);
+#else
     uint32_t *dst32 = mem_base_u32(g_mem_base, MM_PIF_MEM);
+#endif
     uint32_t *src32 = (uint32_t*) pifimage;
     md5_state_t state;
     md5_byte_t digest[16];

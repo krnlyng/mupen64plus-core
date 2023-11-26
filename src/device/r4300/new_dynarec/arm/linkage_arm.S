@@ -68,20 +68,20 @@
 
 #include "asm_defines_gas.h"
 
-device_r4300_new_dynarec_hot_state_dynarec_local = (offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_dynarec_local)
+device_r4300_recompiler_hot_state_dynarec_local = (offsetof_struct_device_r4300 + offsetof_struct_r4300_core_recompiler_hot_state + offsetof_struct_recompiler_hot_state_dynarec_local)
 
 /* Defines offsets for fp addressed variables */
-fp_saved_context       = offsetof_struct_new_dynarec_hot_state_dynarec_local + 28
-fp_cycle_count         = offsetof_struct_new_dynarec_hot_state_cycle_count
-fp_pending_exception   = offsetof_struct_new_dynarec_hot_state_pending_exception
-fp_pcaddr              = offsetof_struct_new_dynarec_hot_state_pcaddr
-fp_stop                = offsetof_struct_new_dynarec_hot_state_stop
+fp_saved_context       = offsetof_struct_recompiler_hot_state_dynarec_local + 28
+fp_cycle_count         = offsetof_struct_recompiler_hot_state_cycle_count
+fp_pending_exception   = offsetof_struct_recompiler_hot_state_pending_exception
+fp_pcaddr              = offsetof_struct_recompiler_hot_state_pcaddr
+fp_stop                = offsetof_struct_recompiler_hot_state_stop
 
 TEXT_SECTION
 
     .align   2
     .outptr_offset  : .word out-(.outptr_pic+8)
-    .savedcontextptr_offset  : .word g_dev + device_r4300_new_dynarec_hot_state_dynarec_local + fp_saved_context -(.savedcontextptr_pic+8)
+    .savedcontextptr_offset  : .word g_dev + device_r4300_recompiler_hot_state_dynarec_local + fp_saved_context -(.savedcontextptr_pic+8)
 
 GLOBAL_FUNCTION(jump_vaddr_r0):
     b      jump_vaddr

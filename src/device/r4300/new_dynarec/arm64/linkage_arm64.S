@@ -45,14 +45,14 @@
 
 #include "asm_defines_gas.h"
 
-device_r4300_new_dynarec_hot_state_dynarec_local = (offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_dynarec_local)
+device_r4300_recompiler_hot_state_dynarec_local = (offsetof_struct_device_r4300 + offsetof_struct_r4300_core_recompiler_hot_state + offsetof_struct_recompiler_hot_state_dynarec_local)
 saved_context = 160
 
 /* Defines offsets for fp addressed variables */
-fp_cycle_count         = offsetof_struct_new_dynarec_hot_state_cycle_count
-fp_pending_exception   = offsetof_struct_new_dynarec_hot_state_pending_exception
-fp_pcaddr              = offsetof_struct_new_dynarec_hot_state_pcaddr
-fp_stop                = offsetof_struct_new_dynarec_hot_state_stop
+fp_cycle_count         = offsetof_struct_recompiler_hot_state_cycle_count
+fp_pending_exception   = offsetof_struct_recompiler_hot_state_pending_exception
+fp_pcaddr              = offsetof_struct_recompiler_hot_state_pcaddr
+fp_stop                = offsetof_struct_recompiler_hot_state_stop
 
 TEXT_SECTION
 
@@ -245,7 +245,7 @@ GLOBAL_FUNCTION(dyna_linker_ds):
 GLOBAL_FUNCTION(new_dyna_start):
     adrp   x16, g_dev
     add    x16, x16, :lo12:g_dev
-    movl   x1, (device_r4300_new_dynarec_hot_state_dynarec_local + saved_context)
+    movl   x1, (device_r4300_recompiler_hot_state_dynarec_local + saved_context)
     add    x16, x16, x1
     adrp   x1, base_addr_rx
     add    x1, x1, :lo12:base_addr_rx

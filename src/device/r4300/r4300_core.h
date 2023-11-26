@@ -25,6 +25,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if defined(PROFILE_R4300)
 #include <stdio.h>
 #endif
@@ -67,23 +71,32 @@ enum {
     EMUMODE_DYNAREC          = 2,
 };
 
+#ifdef VR4300_JITTER
+#define DELAY_SLOT(r4300) (*r4300_delay_slot(r4300))
+#else
+#define DELAY_SLOT(r4300) r4300->delay_slot
+#endif
 
 struct r4300_core
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 	/* New dynarec uses a different memory layout */
     int64_t regs[32];
     int64_t hi;
     int64_t lo;
 #endif
+#if !defined(VR4300_JITTER)
     unsigned int llbit;
+#endif
 
     struct precomp_instr* pc;
 
+#if !defined(VR4300_JITTER)
     unsigned int delay_slot;
+#endif
     uint32_t skip_jump;
 
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 	/* New dynarec uses a different memory layout */
     int stop;
 #endif
@@ -98,7 +111,7 @@ struct r4300_core
      * XXX: more work is needed to correctly encapsulate these */
     struct cached_interp cached_interp;
 
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     /* from recomp.c.
      * XXX: more work is needed to correctly encapsulate these */
     struct recomp {
@@ -181,9 +194,11 @@ struct r4300_core
     /* FIXME: better put that near linkage_arm code
      * to help generate call beyond the +/-32MB range.
      */
+#if !defined(VR4300_JITTER)
     ALIGN(4096, char extra_memory[33554432]);
-    struct new_dynarec_hot_state new_dynarec_hot_state;
-#endif /* NEW_DYNAREC */
+#endif
+    struct recompiler_hot_state recompiler_hot_state;
+#endif /* !NEW_DYNAREC && !VR4300_JITTER */
 
     unsigned int emumode;
 
@@ -205,13 +220,13 @@ struct r4300_core
 #define R4300_KSEG0 UINT32_C(0x80000000)
 #define R4300_KSEG1 UINT32_C(0xa0000000)
 
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 #define R4300_REGS_OFFSET \
     offsetof(struct r4300_core, regs)
 #else
 #define R4300_REGS_OFFSET (\
-    offsetof(struct r4300_core, new_dynarec_hot_state) + \
-    offsetof(struct new_dynarec_hot_state, regs))
+    offsetof(struct r4300_core, recompiler_hot_state) + \
+    offsetof(struct recompiler_hot_state, regs))
 #endif
 
 void init_r4300(struct r4300_core* r4300, struct memory* mem, struct mi_controller* mi, struct rdram* rdram, const struct interrupt_handler* interrupt_handlers, unsigned int emumode, unsigned int count_per_op, unsigned int count_per_op_denom_pot, int no_compiled_jump, int randomize_interrupt, uint32_t start_address);
@@ -219,11 +234,13 @@ void poweron_r4300(struct r4300_core* r4300);
 
 void run_r4300(struct r4300_core* r4300);
 
+unsigned int *r4300_delay_slot(struct r4300_core* r4300);
 int64_t* r4300_regs(struct r4300_core* r4300);
 int64_t* r4300_mult_hi(struct r4300_core* r4300);
 int64_t* r4300_mult_lo(struct r4300_core* r4300);
 unsigned int* r4300_llbit(struct r4300_core* r4300);
 uint32_t* r4300_pc(struct r4300_core* r4300);
+uint32_t* r4300_dbg_pc(struct r4300_core* r4300);
 struct precomp_instr** r4300_pc_struct(struct r4300_core* r4300);
 int* r4300_stop(struct r4300_core* r4300);
 
@@ -252,5 +269,9 @@ void invalidate_r4300_cached_code(struct r4300_core* r4300, uint32_t address, si
 void generic_jump_to(struct r4300_core* r4300, unsigned int address);
 
 void savestates_load_set_pc(struct r4300_core* r4300, uint32_t pc);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

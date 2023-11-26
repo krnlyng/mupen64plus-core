@@ -35,16 +35,20 @@
 #define DOUBLE_HALF_XOR 0
 #endif
 
-void init_cp1(struct cp1* cp1, struct new_dynarec_hot_state* new_dynarec_hot_state)
+void init_cp1(struct cp1* cp1, struct recompiler_hot_state* recompiler_hot_state)
 {
-#ifdef NEW_DYNAREC
-    cp1->new_dynarec_hot_state = new_dynarec_hot_state;
+#if defined(NEW_DYNAREC) || defined(VR4300_JITTER)
+    cp1->recompiler_hot_state = recompiler_hot_state;
 #endif
 }
 
 void poweron_cp1(struct cp1* cp1)
 {
-    memset(cp1->regs, 0, 32 * sizeof(cp1->regs[0]));
+#if defined(VR4300_JITTER)
+    memset(cp1->recompiler_hot_state->cp1_regs, 0, 32 * sizeof(cp1->recompiler_hot_state->cp1_regs[0]));
+#else
+    memset(cp1->cp1_regs, 0, 32 * sizeof(cp1->cp1_regs[0]));
+#endif
     *r4300_cp1_fcr0(cp1) = UINT32_C(0xA00);
     *r4300_cp1_fcr31(cp1) = 0;
 
@@ -58,68 +62,95 @@ void poweron_cp1(struct cp1* cp1)
 
 cp1_reg* r4300_cp1_regs(struct cp1* cp1)
 {
-    return cp1->regs;
+#if defined(VR4300_JITTER)
+    return cp1->recompiler_hot_state->cp1_regs;
+#else
+    return cp1->cp1_regs;
+#endif
 }
 
 float** r4300_cp1_regs_simple(struct cp1* cp1)
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 	/* New dynarec uses a different memory layout */
     return cp1->regs_simple;
 #else
-    return cp1->new_dynarec_hot_state->cp1_regs_simple;
+    return cp1->recompiler_hot_state->cp1_regs_simple;
 #endif
 }
 
 double** r4300_cp1_regs_double(struct cp1* cp1)
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 	/* New dynarec uses a different memory layout */
     return cp1->regs_double;
 #else
-    return cp1->new_dynarec_hot_state->cp1_regs_double;
+    return cp1->recompiler_hot_state->cp1_regs_double;
 #endif
 }
 
 uint32_t* r4300_cp1_fcr0(struct cp1* cp1)
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 	/* New dynarec uses a different memory layout */
     return &cp1->fcr0;
 #else
-    return &cp1->new_dynarec_hot_state->cp1_fcr0;
+    return &cp1->recompiler_hot_state->cp1_fcr0;
 #endif
 }
 
 uint32_t* r4300_cp1_fcr31(struct cp1* cp1)
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
 	/* New dynarec uses a different memory layout */
     return &cp1->fcr31;
 #else
-    return &cp1->new_dynarec_hot_state->cp1_fcr31;
+    return &cp1->recompiler_hot_state->cp1_fcr31;
 #endif
 }
-
+#include <stdio.h>
 void set_fpr_pointers(struct cp1* cp1, uint32_t newStatus)
 {
     int i;
 
+#if defined(VR4300_JITTER)
+    // The vr4300_jitter generates code differently
+    // depending on whether the FR flag is set or not
+    // thus we need to clear the cache when it changes.
+    vr4300_jitter_invalidate_cached_code(NULL, 0, 0);
+#endif
+
     // update the FPR register pointers
     if ((newStatus & CP0_STATUS_FR) == 0)
     {
+#ifdef VR4300_JITTER
+        cp1->recompiler_hot_state->fr_is_set = 0;
+#endif
         for (i = 0; i < 32; i++)
         {
-            (r4300_cp1_regs_simple(cp1))[i] = &cp1->regs[i & ~1].float32[(i & 1) ^ DOUBLE_HALF_XOR];
-            (r4300_cp1_regs_double(cp1))[i] = &cp1->regs[i & ~1].float64;
+#ifdef VR4300_JITTER
+            (r4300_cp1_regs_simple(cp1))[i] = &cp1->recompiler_hot_state->cp1_regs[i & ~1].float32[i & 1 ^ DOUBLE_HALF_XOR];
+            (r4300_cp1_regs_double(cp1))[i] = &cp1->recompiler_hot_state->cp1_regs[i & ~1].float64;
+#else
+            (r4300_cp1_regs_simple(cp1))[i] = &cp1->cp1_regs[i & ~1].float32[i & 1 ^ DOUBLE_HALF_XOR];
+            (r4300_cp1_regs_double(cp1))[i] = &cp1->cp1_regs[i & ~1].float64;
+#endif
         }
     }
     else
     {
+#ifdef VR4300_JITTER
+        cp1->recompiler_hot_state->fr_is_set = 1;
+#endif
         for (i = 0; i < 32; i++)
         {
-            (r4300_cp1_regs_simple(cp1))[i] = &cp1->regs[i].float32[DOUBLE_HALF_XOR];
-            (r4300_cp1_regs_double(cp1))[i] = &cp1->regs[i].float64;
+#ifdef VR4300_JITTER
+            (r4300_cp1_regs_simple(cp1))[i] = &cp1->recompiler_hot_state->cp1_regs[i].float32[DOUBLE_HALF_XOR];
+            (r4300_cp1_regs_double(cp1))[i] = &cp1->recompiler_hot_state->cp1_regs[i].float64;
+#else
+            (r4300_cp1_regs_simple(cp1))[i] = &cp1->cp1_regs[i].float32[DOUBLE_HALF_XOR];
+            (r4300_cp1_regs_double(cp1))[i] = &cp1->cp1_regs[i].float64;
+#endif
         }
     }
 }

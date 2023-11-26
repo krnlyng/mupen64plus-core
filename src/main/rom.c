@@ -36,6 +36,7 @@
 #include "api/m64p_config.h"
 #include "api/m64p_types.h"
 #include "device/dd/disk.h"
+#include "device/r4300/vr4300_jitter/vr4300_jitter.h"
 #include "backends/file_storage.h"
 #include "device/device.h"
 #include "main.h"
@@ -156,14 +157,26 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     g_RomWordsLittleEndian = 0;
     /* allocate new buffer for ROM and copy into this buffer */
     g_rom_size = size;
+#ifdef VR4300_JITTER
+    swap_copy_rom(vr4300_jitter_get_logical_memory(MM_CART_ROM), romimage, size, &imagetype);
+#else
     swap_copy_rom((uint8_t*)mem_base_u32(g_mem_base, MM_CART_ROM), romimage, size, &imagetype);
+#endif
     /* ROM is now in N64 native (big endian) byte order */
 
+#ifdef VR4300_JITTER
+    memcpy(&ROM_HEADER, vr4300_jitter_get_logical_memory(MM_CART_ROM), sizeof(m64p_rom_header));
+#else
     memcpy(&ROM_HEADER, (uint8_t*)mem_base_u32(g_mem_base, MM_CART_ROM), sizeof(m64p_rom_header));
+#endif
 
     /* Calculate MD5 hash  */
     md5_init(&state);
+#ifdef VR4300_JITTER
+    md5_append(&state, (const md5_byte_t*)(vr4300_jitter_get_logical_memory(MM_CART_ROM)), g_rom_size);
+#else
     md5_append(&state, (const md5_byte_t*)((uint8_t*)mem_base_u32(g_mem_base, MM_CART_ROM)), g_rom_size);
+#endif
     md5_finish(&state, digest);
     for ( i = 0; i < 16; ++i )
         sprintf(buffer+i*2, "%02X", digest[i]);

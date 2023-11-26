@@ -36,15 +36,18 @@
 #include "debugger/dbg_debugger.h"
 #endif
 
+#include "new_dynarec/new_dynarec.h"
 
-static void InterpretOpcode(struct r4300_core* r4300);
+#include <stdio.h>
+
+void InterpretOpcode(struct r4300_core* r4300);
 
 #define DECLARE_R4300
 #define PCADDR r4300->interp_PC.addr
 #define ADD_TO_PC(x) r4300->interp_PC.addr += x*4;
-#define DECLARE_INSTRUCTION(name) static void name(struct r4300_core* r4300, uint32_t op)
+#define DECLARE_INSTRUCTION(name) void name(struct r4300_core* r4300, uint32_t op)
 #define DECLARE_JUMP(name, destination, condition, link, likely, cop1) \
-   static void name(struct r4300_core* r4300, uint32_t op) \
+   void name(struct r4300_core* r4300, uint32_t op) \
    { \
       const int take_jump = (condition); \
       const uint32_t jump_target = (destination); \
@@ -57,10 +60,10 @@ static void InterpretOpcode(struct r4300_core* r4300);
       if (!likely || take_jump) \
       { \
         r4300->interp_PC.addr += 4; \
-        r4300->delay_slot=1; \
+        DELAY_SLOT(r4300)=1; \
         InterpretOpcode(r4300); \
         cp0_update_count(r4300); \
-        r4300->delay_slot=0; \
+        DELAY_SLOT(r4300)=0; \
         if (take_jump && !r4300->skip_jump) \
         { \
           r4300->interp_PC.addr = jump_target; \
@@ -103,6 +106,10 @@ static void InterpretOpcode(struct r4300_core* r4300);
 #define FT_OF(op)      (((op) >> 16) & 0x1F)
 #define JUMP_OF(op)    ((op) & UINT32_C(0x3FFFFFF))
 
+#if DISABLE_IDLE_SKIPPING
+#define IS_RELATIVE_IDLE_LOOP(...) 0
+#define IS_ABSOLUTE_IDLE_LOOP(...) 0
+#else
 /* Determines whether a relative jump in a 16-bit immediate goes back to the
  * same instruction without doing any work in its delay slot. The jump is
  * relative to the instruction in the delay slot, so 1 instruction backwards
@@ -118,6 +125,7 @@ static void InterpretOpcode(struct r4300_core* r4300);
 	(JUMP_OF(op) == ((addr) & UINT32_C(0x0FFFFFFF)) >> 2 \
 	 && ((addr) & UINT32_C(0x0FFFFFFF)) != UINT32_C(0x0FFFFFFC) \
 	 && *fast_mem_access((r4300), (addr) + 4) == 0)
+#endif
 
 /* These macros parse opcode fields. */
 #define rrt r4300_regs(r4300)[RT_OF(op)]
@@ -751,9 +759,6 @@ void run_pure_interpreter(struct r4300_core* r4300)
 
    while (!*r4300_stop(r4300))
    {
-#ifdef COMPARE_CORE
-     CoreCompareCallback();
-#endif
 #ifdef DBG
      if (g_DebuggerActive) update_debugger(*r4300_pc(r4300));
 #endif

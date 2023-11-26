@@ -359,9 +359,17 @@ EXPORT void * CALL DebugGetCPUDataPtr(m64p_dbg_cpu_data cpu_data_type)
     switch (cpu_data_type)
     {
         case M64P_CPU_PC:
-            return r4300_pc(r4300);
+            return r4300_dbg_pc(r4300);
         case M64P_CPU_REG_REG:
-            return r4300_regs(r4300);
+#ifdef VR4300_JITTER
+            if (r4300->emumode == EMUMODE_DYNAREC) {
+                return r4300->recompiler_hot_state.gprs_tmp_ptr;
+            } else {
+#endif
+                return r4300_regs(r4300);
+#ifdef VR4300_JITTER
+            }
+#endif
         case M64P_CPU_REG_HI:
             return r4300_mult_hi(r4300);
         case M64P_CPU_REG_LO:
@@ -373,7 +381,15 @@ EXPORT void * CALL DebugGetCPUDataPtr(m64p_dbg_cpu_data cpu_data_type)
         case M64P_CPU_REG_COP1_SIMPLE_PTR:
             return r4300_cp1_regs_simple(&r4300->cp1);
         case M64P_CPU_REG_COP1_FGR_64:
-            return &cp1_regs->dword;
+#ifdef VR4300_JITTER
+            if (r4300->emumode == EMUMODE_DYNAREC) {
+                return r4300->recompiler_hot_state.fprs_tmp_ptr;
+            } else {
+#endif
+                return &cp1_regs->dword;
+#ifdef VR4300_JITTER
+            }
+#endif
         case M64P_CPU_TLB:
             return r4300->cp0.tlb.entries;
         default:

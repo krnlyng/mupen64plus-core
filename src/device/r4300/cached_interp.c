@@ -52,14 +52,23 @@
 
 #define DECLARE_R4300 struct r4300_core* r4300 = &g_dev.r4300;
 #define PCADDR *r4300_pc(r4300)
-#ifdef NEW_DYNAREC
+#if defined(NEW_DYNAREC)
 #define ADD_TO_PC(x) \
     if (r4300->emumode != EMUMODE_DYNAREC) \
       (*r4300_pc_struct(r4300)) += x; \
     else \
     { \
-      assert(*r4300_pc_struct(r4300) == &r4300->new_dynarec_hot_state.fake_pc); \
-      r4300->new_dynarec_hot_state.pcaddr += x*4; \
+      assert(*r4300_pc_struct(r4300) == &r4300->recompiler_hot_state.fake_pc); \
+      r4300->recompiler_hot_state.pcaddr += x*4; \
+    }
+#elif defined(VR4300_JITTER)
+#define ADD_TO_PC(x) \
+    if (r4300->emumode != EMUMODE_DYNAREC) \
+      (*r4300_pc_struct(r4300)) += x; \
+    else \
+    { \
+      assert(*r4300_pc_struct(r4300) == &r4300->recompiler_hot_state.fake_pc); \
+      r4300->recompiler_hot_state.pc += x*4; \
     }
 #else
 #define ADD_TO_PC(x) (*r4300_pc_struct(r4300)) += x;
@@ -81,11 +90,11 @@ void cached_interp_##name(void) \
     if (!likely || take_jump) \
     { \
         (*r4300_pc_struct(r4300))++; \
-        r4300->delay_slot=1; \
+        DELAY_SLOT(r4300)=1; \
         UPDATE_DEBUGGER(); \
         (*r4300_pc_struct(r4300))->ops(); \
         cp0_update_count(r4300); \
-        r4300->delay_slot=0; \
+        DELAY_SLOT(r4300)=0; \
         if (take_jump && !r4300->skip_jump) \
         { \
             (*r4300_pc_struct(r4300))=r4300->cached_interp.actual->block+((jump_target-r4300->cached_interp.actual->start)>>2); \
@@ -114,11 +123,11 @@ void cached_interp_##name##_OUT(void) \
     if (!likely || take_jump) \
     { \
         (*r4300_pc_struct(r4300))++; \
-        r4300->delay_slot=1; \
+        DELAY_SLOT(r4300)=1; \
         UPDATE_DEBUGGER(); \
         (*r4300_pc_struct(r4300))->ops(); \
         cp0_update_count(r4300); \
-        r4300->delay_slot=0; \
+        DELAY_SLOT(r4300)=0; \
         if (take_jump && !r4300->skip_jump) \
         { \
             generic_jump_to(r4300, jump_target); \
@@ -194,7 +203,7 @@ void cached_interp_##name##_IDLE(void) \
 void cached_interp_FIN_BLOCK(void)
 {
     DECLARE_R4300
-    if (!r4300->delay_slot)
+    if (!DELAY_SLOT(r4300))
     {
         generic_jump_to(r4300, ((*r4300_pc_struct(r4300))-1)->addr+4);
 /*
@@ -984,10 +993,13 @@ void invalidate_cached_code_hacktarux(struct r4300_core* r4300, uint32_t address
     }
 }
 
+int skip_log(void);
+
 void run_cached_interpreter(struct r4300_core* r4300)
 {
     while (!*r4300_stop(r4300))
     {
+        skip_log();
 #ifdef COMPARE_CORE
         if ((*r4300_pc_struct(r4300))->ops == cached_interp_FIN_BLOCK && ((*r4300_pc_struct(r4300))->addr < 0x80000000 || (*r4300_pc_struct(r4300))->addr >= 0xc0000000))
             virtual_to_physical_address(r4300, (*r4300_pc_struct(r4300))->addr, 2);

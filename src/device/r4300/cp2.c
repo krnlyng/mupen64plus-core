@@ -27,13 +27,14 @@
 #include "cp2.h"
 
 #include "new_dynarec/new_dynarec.h"
+#include "vr4300_jitter/vr4300_jitter.h"
 
 #define FCR31_FS_BIT UINT32_C(0x2000000)
 
-void init_cp2(struct cp2* cp2, struct new_dynarec_hot_state* new_dynarec_hot_state)
+void init_cp2(struct cp2* cp2, struct recompiler_hot_state* recompiler_hot_state)
 {
-#ifdef NEW_DYNAREC
-    cp2->new_dynarec_hot_state = new_dynarec_hot_state;
+#if defined(NEW_DYNAREC) || defined(VR4300_JITTER)
+    cp2->recompiler_hot_state = recompiler_hot_state;
 #endif
 }
 
@@ -44,11 +45,11 @@ void poweron_cp2(struct cp2* cp2)
 
 uint64_t* r4300_cp2_latch(struct cp2* cp2)
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     /* New dynarec uses a different memory layout */
     return &cp2->latch;
 #else
-    return &cp2->new_dynarec_hot_state->cp2_latch;
+    return &cp2->recompiler_hot_state->cp2_latch;
 #endif
 }
 

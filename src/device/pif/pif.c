@@ -31,6 +31,7 @@
 #include "api/m64p_types.h"
 #include "backends/api/joybus.h"
 #include "device/memory/memory.h"
+#include "device/r4300/new_dynarec/new_dynarec.h"
 #include "device/r4300/r4300_core.h"
 #include "device/rcp/si/si_controller.h"
 #include "plugin/plugin.h"

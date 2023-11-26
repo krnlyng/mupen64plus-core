@@ -22,6 +22,8 @@
 #ifndef M64P_DEVICE_R4300_NEW_DYNAREC_H
 #define M64P_DEVICE_R4300_NEW_DYNAREC_H
 
+#if defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
+
 #include "device/r4300/recomp_types.h" /* for precomp_instr */
 
 #include <stddef.h>
@@ -42,9 +44,8 @@ struct r4300_core;
  * TODO: add static_asserts to verify that offsets are within LDR/STR offsets ranges.
  */
 
-struct new_dynarec_hot_state
+struct recompiler_hot_state
 {
-#ifdef NEW_DYNAREC
     /* 0-6:   used by dynarec to push/pop caller-saved register (r0-r3, r12) and possibly lr (see invalidate_addr)
        7-15:  saved_context*/
 #if (NEW_DYNAREC == NEW_DYNAREC_ARM64) || (NEW_DYNAREC == NEW_DYNAREC_X64)
@@ -81,9 +82,6 @@ struct new_dynarec_hot_state
     intptr_t ram_offset;
     uintptr_t mini_ht[32][2];
     uintptr_t memory_map[1048576];
-#else
-    char dummy;
-#endif
 };
 
 extern unsigned int stop_after_jal;
@@ -93,5 +91,11 @@ void invalidate_cached_code_new_dynarec(struct r4300_core* r4300, uint32_t addre
 void new_dynarec_init(void);
 void new_dyna_start(void);
 void new_dynarec_cleanup(void);
+
+#elif !defined(VR4300_JITTER)
+struct recompiler_hot_state {
+    char dummy;
+};
+#endif
 
 #endif /* M64P_DEVICE_R4300_NEW_DYNAREC_H */

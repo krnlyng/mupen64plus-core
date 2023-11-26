@@ -1045,3 +1045,8 @@ static void free_exec(void *ptr, size_t length)
     free(ptr);
 #endif
 }
+
+int skip_log(void)
+{
+    return 1;
+}

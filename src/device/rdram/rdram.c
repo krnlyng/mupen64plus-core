@@ -116,7 +116,12 @@ static void map_corrupt_rdram(struct rdram* rdram, int corrupt)
     mapping.handler.write32 = write_rdram_dram;
 
     apply_mem_mapping(rdram->r4300->mem, &mapping);
-#ifndef NEW_DYNAREC
+
+#if defined(VR4300_JITTER)
+    vr4300_jitter_map_corrupt_rdram(corrupt);
+#endif
+
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     rdram->r4300->recomp.fast_memory = (corrupt) ? 0 : 1;
     invalidate_r4300_cached_code(rdram->r4300, 0, 0);
 #endif

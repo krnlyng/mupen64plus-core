@@ -54,4 +54,6 @@ The zlib/libpng license:
 The Bitstream license:
    * The TrueType font (data/font.ttf) is licensed by the Bitstream license. Please see the included doc/font-license file for the terms and conditions of the Bitstream license.
 
+rangeset is Copyright (c) 2020 Admiral H. Curtiss, for the license see:
+src/device/r4300/vr4300_jitter/rangeset/LICENSE
 

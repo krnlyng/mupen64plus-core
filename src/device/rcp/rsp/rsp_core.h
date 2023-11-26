@@ -22,6 +22,10 @@
 #ifndef M64P_DEVICE_RCP_RSP_RSP_CORE_H
 #define M64P_DEVICE_RCP_RSP_RSP_CORE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 #include "osal/preproc.h"
@@ -140,5 +144,9 @@ void do_SP_Task(struct rsp_core* sp);
 
 void rsp_interrupt_event(void* opaque);
 void rsp_end_of_dma_event(void* opaque);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

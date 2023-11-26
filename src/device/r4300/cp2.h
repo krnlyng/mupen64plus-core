@@ -32,11 +32,14 @@ struct cp2
 
 #ifdef NEW_DYNAREC
     /* New dynarec uses a different memory layout */
-    struct new_dynarec_hot_state* new_dynarec_hot_state;
+    struct recompiler_hot_state* recompiler_hot_state;
+#endif
+#ifdef VR4300_JITTER
+    struct recompiler_hot_state* recompiler_hot_state;
 #endif
 };
 
-void init_cp2(struct cp2* cp2, struct new_dynarec_hot_state* new_dynarec_hot_state);
+void init_cp2(struct cp2* cp2, struct recompiler_hot_state* recompiler_hot_state);
 void poweron_cp2(struct cp2* cp2);
 
 uint64_t* r4300_cp2_latch(struct cp2* cp2);

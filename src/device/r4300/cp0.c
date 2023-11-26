@@ -35,13 +35,15 @@
 #include "debugger/dbg_debugger.h"
 #endif
 
+#include "main/main.h"
+
 /* global functions */
-void init_cp0(struct cp0* cp0, unsigned int count_per_op, unsigned int count_per_op_denom_pot, struct new_dynarec_hot_state* new_dynarec_hot_state, const struct interrupt_handler* interrupt_handlers)
+void init_cp0(struct cp0* cp0, unsigned int count_per_op, unsigned int count_per_op_denom_pot, struct recompiler_hot_state* recompiler_hot_state, const struct interrupt_handler* interrupt_handlers)
 {
     cp0->count_per_op = count_per_op;
     cp0->count_per_op_denom_pot = count_per_op_denom_pot;
-#ifdef NEW_DYNAREC
-    cp0->new_dynarec_hot_state = new_dynarec_hot_state;
+#if defined(NEW_DYNAREC) || defined(VR4300_JITTER)
+    cp0->recompiler_hot_state = recompiler_hot_state;
 #endif
 
     memcpy(cp0->interrupt_handlers, interrupt_handlers, CP0_INTERRUPT_HANDLERS_COUNT*sizeof(*interrupt_handlers));
@@ -83,21 +85,21 @@ void poweron_cp0(struct cp0* cp0)
 
 uint32_t* r4300_cp0_regs(struct cp0* cp0)
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     return cp0->regs;
 #else
 	/* New dynarec uses a different memory layout */
-    return cp0->new_dynarec_hot_state->cp0_regs;
+    return cp0->recompiler_hot_state->cp0_regs;
 #endif
 }
-
+#include <stdio.h>
 uint64_t* r4300_cp0_latch(struct cp0* cp0)
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     return &cp0->latch;
 #else
     /* New dynarec uses a different memory layout */
-    return &cp0->new_dynarec_hot_state->cp0_latch;
+    return &cp0->recompiler_hot_state->cp0_latch;
 #endif
 }
 
@@ -108,16 +110,20 @@ uint32_t* r4300_cp0_last_addr(struct cp0* cp0)
 
 unsigned int* r4300_cp0_next_interrupt(struct cp0* cp0)
 {
+#if !defined(VR4300_JITTER)
     return &cp0->next_interrupt;
+#else
+    return &cp0->recompiler_hot_state->next_interrupt;
+#endif
 }
 
 int* r4300_cp0_cycle_count(struct cp0* cp0)
 {
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     return &cp0->cycle_count;
 #else
     /* New dynarec uses a different memory layout */
-    return &cp0->new_dynarec_hot_state->cycle_count;
+    return &cp0->recompiler_hot_state->cycle_count;
 #endif
 }
 
@@ -148,12 +154,14 @@ int check_cop2_unusable(struct r4300_core* r4300)
     return 0;
 }
 
+int skip_log(void);
+
 void cp0_update_count(struct r4300_core* r4300)
 {
     struct cp0* cp0 = &r4300->cp0;
     uint32_t* cp0_regs = r4300_cp0_regs(cp0);
 
-#ifdef NEW_DYNAREC
+#if defined(NEW_DYNAREC) || defined(VR4300_JITTER)
     if (r4300->emumode != EMUMODE_DYNAREC)
     {
 #endif
@@ -165,18 +173,24 @@ void cp0_update_count(struct r4300_core* r4300)
         cp0_regs[CP0_COUNT_REG] += count;
         *r4300_cp0_cycle_count(cp0) += count;
         cp0->last_addr = *r4300_pc(r4300);
-#ifdef NEW_DYNAREC
+#if defined(NEW_DYNAREC) || defined(VR4300_JITTER)
     }
-    else
+    else {
+#if defined(VR4300_JITTER)
+        vr4300_jitter_fix_hot_cycles();
+#endif
         cp0_regs[CP0_COUNT_REG] = *r4300_cp0_next_interrupt(cp0) + *r4300_cp0_cycle_count(cp0);
+    }
 #endif
 
+   if ((DELAY_SLOT(r4300)))
+    skip_log();
 #ifdef COMPARE_CORE
-   if (r4300->delay_slot)
+   if ((DELAY_SLOT(r4300)))
      CoreCompareCallback();
 #endif
 /*#ifdef DBG
-   if (g_DebuggerActive && !r4300->delay_slot) update_debugger(*r4300_pc(r4300));
+   if (g_DebuggerActive && !(DELAY_SLOT(r4300))) update_debugger(*r4300_pc(r4300));
 #endif
 */
 }
@@ -184,16 +198,16 @@ void cp0_update_count(struct r4300_core* r4300)
 static void exception_epilog(struct r4300_core* r4300)
 {
 #ifndef NO_ASM
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     if (r4300->emumode == EMUMODE_DYNAREC)
     {
         dyna_jump();
-        if (!r4300->recomp.dyna_interp) { r4300->delay_slot = 0; }
+        if (!r4300->recomp.dyna_interp) { (DELAY_SLOT(r4300)) = 0; }
     }
 #endif
 #endif
 
-#ifndef NEW_DYNAREC
+#if !defined(NEW_DYNAREC) && !defined(VR4300_JITTER)
     if (r4300->emumode != EMUMODE_DYNAREC || r4300->recomp.dyna_interp)
     {
         r4300->recomp.dyna_interp = 0;
@@ -201,7 +215,7 @@ static void exception_epilog(struct r4300_core* r4300)
     if (r4300->emumode != EMUMODE_DYNAREC)
     {
 #endif
-        if (r4300->delay_slot)
+        if ((DELAY_SLOT(r4300)))
         {
             r4300->skip_jump = *r4300_pc(r4300);
             *r4300_cp0_next_interrupt(&r4300->cp0) = 0;
@@ -209,7 +223,6 @@ static void exception_epilog(struct r4300_core* r4300)
         }
     }
 }
-
 
 void TLB_refill_exception(struct r4300_core* r4300, uint32_t address, int w)
 {
@@ -234,7 +247,7 @@ void TLB_refill_exception(struct r4300_core* r4300, uint32_t address, int w)
         generic_jump_to(r4300, UINT32_C(0x80000180));
 
 
-        if (r4300->delay_slot == 1 || r4300->delay_slot == 3) {
+        if ((DELAY_SLOT(r4300)) == 1 || (DELAY_SLOT(r4300)) == 3) {
             cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
         }
         else {
@@ -271,13 +284,12 @@ void TLB_refill_exception(struct r4300_core* r4300, uint32_t address, int w)
                 usual_handler = 1;
             }
         }
-
         generic_jump_to(r4300, (usual_handler)
                 ? UINT32_C(0x80000180)
                 : UINT32_C(0x80000000));
     }
 
-    if (r4300->delay_slot == 1 || r4300->delay_slot == 3)
+    if ((DELAY_SLOT(r4300)) == 1 || (DELAY_SLOT(r4300)) == 3)
     {
         cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
         cp0_regs[CP0_EPC_REG] -= 4;
@@ -303,8 +315,7 @@ void exception_general(struct r4300_core* r4300)
     cp0_regs[CP0_STATUS_REG] |= CP0_STATUS_EXL;
 
     cp0_regs[CP0_EPC_REG] = *r4300_pc(r4300);
-
-    if (r4300->delay_slot == 1 || r4300->delay_slot == 3)
+    if ((DELAY_SLOT(r4300)) == 1 || (DELAY_SLOT(r4300)) == 3)
     {
         cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
         cp0_regs[CP0_EPC_REG] -= 4;

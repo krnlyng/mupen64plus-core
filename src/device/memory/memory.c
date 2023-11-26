@@ -37,6 +37,8 @@
 #include "debugger/dbg_memory.h"
 #endif
 
+#include "device/r4300/new_dynarec/new_dynarec.h"
+
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -237,9 +239,21 @@ enum {
 #define MEM_BASE_PTR(mem_base)  ((void*)((uintptr_t)(mem_base) & ~0x1))
 #define SET_MEM_BASE_MODE(mem_base) (mem_base = (void*)((uintptr_t)(mem_base) | 0x1))
 
+#ifdef VR4300_JITTER
+static int using_dynarec_fastmem = 0;
+#endif
+
 void* init_mem_base(void)
 {
     void* mem_base;
+
+#ifdef VR4300_JITTER
+    mem_base = vr4300_jitter_initialize_fastmem();
+    if (mem_base) {
+        using_dynarec_fastmem = 1;
+        return mem_base;
+    }
+#endif
 
     /* First try the full mem base alloc */
 #ifdef _WIN32
@@ -269,6 +283,13 @@ void* init_mem_base(void)
 
 void release_mem_base(void* mem_base)
 {
+#ifdef VR4300_JITTER
+    if (using_dynarec_fastmem) {
+        vr4300_jitter_uninitialize_fastmem();
+        using_dynarec_fastmem = 0;
+        return;
+    }
+#endif
 #ifdef _WIN32
     if (MEM_BASE_MODE(mem_base) == 0)
         _aligned_free(MEM_BASE_PTR(mem_base));
@@ -280,6 +301,32 @@ void release_mem_base(void* mem_base)
 uint32_t* mem_base_u32(void* mem_base, uint32_t address)
 {
     uint32_t* mem;
+
+#ifdef VR4300_JITTER
+    if (using_dynarec_fastmem) {
+        if (address < RDRAM_MAX_SIZE) {
+            mem = (uint32_t*)(vr4300_jitter_get_logical_memory(MM_RDRAM_DRAM) + (rdram_dram_address(address) << 2));
+        }
+        else if (address >= MM_CART_ROM) {
+            if ((address & UINT32_C(0xfff00000)) == MM_PIF_MEM) {
+                mem = (uint32_t*)(vr4300_jitter_get_logical_memory(MM_PIF_MEM) + pif_address(address));
+            } else {
+                mem = (uint32_t*)(vr4300_jitter_get_logical_memory(MM_CART_ROM) + rom_address(address));
+            }
+        }
+        else if ((address & UINT32_C(0xfe000000)) == MM_DD_ROM) {
+            mem = (uint32_t*)(vr4300_jitter_get_logical_memory(MM_DD_ROM) + (dd_rom_address(address) << 2));
+        }
+        else if ((address & UINT32_C(0xffffe000)) == MM_RSP_MEM) {
+            mem = (uint32_t*)(vr4300_jitter_get_logical_memory(MM_RSP_MEM) + (rsp_mem_address(address) << 2));
+        }
+        else {
+            mem = NULL;
+        }
+
+        return mem;
+    }
+#endif
 
     if (MEM_BASE_MODE(mem_base) == 0) {
         /* In full mem base mode, use simple pointer arithmetic */
@@ -299,7 +346,7 @@ uint32_t* mem_base_u32(void* mem_base, uint32_t address)
                 mem = (uint32_t*)((uint8_t*)mem_base + (address - MM_CART_ROM + MB_CART_ROM));
             }
         }
-        else if ((address & UINT32_C(0xfe000000)) ==  MM_DD_ROM) {
+        else if ((address & UINT32_C(0xfe000000)) == MM_DD_ROM) {
             mem = (uint32_t*)((uint8_t*)mem_base + (address - MM_DD_ROM + MB_DD_ROM));
         }
         else if ((address & UINT32_C(0xffffe000)) == MM_RSP_MEM) {

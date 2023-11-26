@@ -108,7 +108,7 @@ uint32_t virtual_to_physical_address(struct r4300_core* r4300, uint32_t address,
 #ifdef NEW_DYNAREC
     if (r4300->emumode == EMUMODE_DYNAREC)
     {
-        intptr_t map = r4300->new_dynarec_hot_state.memory_map[addr];
+        intptr_t map = r4300->recompiler_hot_state.memory_map[addr];
         if ((tlb->LUT_w[addr]) && (w == 1))
         {
             assert(map == (((uintptr_t)r4300->rdram->dram + (uintptr_t)((tlb->LUT_w[addr] & 0xFFFFF000) - 0x80000000) - (address & 0xFFFFF000)) >> 2));
@@ -137,11 +137,50 @@ uint32_t virtual_to_physical_address(struct r4300_core* r4300, uint32_t address,
         if (tlb->LUT_r[addr])
             return (tlb->LUT_r[addr] & UINT32_C(0xFFFFF000)) | (address & UINT32_C(0xFFF));
     }
-    //printf("tlb exception !!! @ %x, %x, add:%x\n", address, w, r4300->pc->addr);
+    //fprintf(stderr, "tlb exception !!! @ %x, %x\n", address, w);
     //getchar();
 
     TLB_refill_exception(r4300, address, w);
 
     //return 0x80000000;
+    return 0x00000000;
+}
+
+uint32_t virtual_to_physical_pc(struct r4300_core* r4300, uint32_t address, int w)
+{
+    const struct tlb* tlb = &r4300->cp0.tlb;
+    unsigned int addr = address >> 12;
+
+    if (w == 1)
+    {
+        if (tlb->LUT_w[addr])
+            return (tlb->LUT_w[addr] & UINT32_C(0xFFFFF000)) | (address & UINT32_C(0xFFF));
+    }
+    else
+    {
+        if (tlb->LUT_r[addr])
+            return (tlb->LUT_r[addr] & UINT32_C(0xFFFFF000)) | (address & UINT32_C(0xFFF));
+    }
+
+    return -1;
+}
+
+uint32_t virtual_to_physical_address_no_exception(struct r4300_core* r4300, uint32_t address, int w)
+{
+    const struct tlb* tlb = &r4300->cp0.tlb;
+    unsigned int addr = address >> 12;
+
+    if (w == 1)
+    {
+        if (tlb->LUT_w[addr])
+            return (tlb->LUT_w[addr] & UINT32_C(0xFFFFF000)) | (address & UINT32_C(0xFFF));
+    }
+    else
+    {
+        if (tlb->LUT_r[addr])
+            return (tlb->LUT_r[addr] & UINT32_C(0xFFFFF000)) | (address & UINT32_C(0xFFF));
+    }
+    //fprintf(stderr, "tlb exception (noexcept) !!! @ %x, %x\n", address, w);
+
     return 0x00000000;
 }
