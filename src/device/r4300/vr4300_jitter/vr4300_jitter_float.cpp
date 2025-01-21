@@ -1155,8 +1155,8 @@ void VR4300_Jitter::recompile_NEG_S(struct jit_instr *op)
 
 void VR4300_Jitter::recompile_NEG_D(struct jit_instr *op)
 {
-    VALIDATE_FIN32(op, s);
-    VALIDATE_FOUT32(op, d);
+    VALIDATE_FIN(op, s);
+    VALIDATE_FOUT(op, d);
 
     RCX64Reg Rs = m_fpr.Bind(op->s, RCMode::Read);
     RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
