@@ -114,7 +114,6 @@ static int before_event(const struct cp0* cp0, unsigned int evt1, unsigned int e
 
 unsigned int add_random_interrupt_time(struct r4300_core* r4300)
 {
-#ifndef CORE_COMPARE
     if (r4300->randomize_interrupt) {
         unsigned int value;
 #ifdef __MINGW32__
@@ -125,9 +124,6 @@ unsigned int add_random_interrupt_time(struct r4300_core* r4300)
         return value % 0x40;
     } else
         return 0;
-#else
-    return 0;
-#endif
 }
 
 void add_interrupt_event(struct cp0* cp0, int type, unsigned int delay)
