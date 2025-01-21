@@ -44,6 +44,9 @@ struct BackPatchInfo {
     int fault_count;
 };
 
+class VR4300_Jitter;
+extern VR4300_Jitter *gJitterInstance;
+
 class VR4300_Jitter : public Gen::X64CodeBlock {
     private:
         bool m_initialized = false;
@@ -113,8 +116,7 @@ class VR4300_Jitter : public Gen::X64CodeBlock {
 
 public:
         static inline VR4300_Jitter *GetInstance() {
-            static VR4300_Jitter *instance = new VR4300_Jitter();
-            return instance;
+            return gJitterInstance;
         }
 
         inline struct r4300_core *GetR4300Core() {

@@ -58,6 +58,8 @@
 
 #include <assert.h>
 
+VR4300_Jitter *gJitterInstance = nullptr;
+
 #include <sys/types.h>
 #if defined(__APPLE__)
 #define MAP_ANONYMOUS MAP_ANON
@@ -826,6 +828,7 @@ void VR4300_Jitter::generate_asm()
 
 void vr4300_jitter_init(void)
 {
+    if (!gJitterInstance) gJitterInstance = new VR4300_Jitter();
     VR4300_Jitter::GetInstance()->Init();
 }
 
@@ -7522,6 +7525,7 @@ void VR4300_Jitter::install_exception_handler(void)
 
 void *vr4300_jitter_initialize_fastmem(void)
 {
+    if (!gJitterInstance) gJitterInstance = new VR4300_Jitter();
     return VR4300_Jitter::GetInstance()->InitializeFastmem();
 }
 
