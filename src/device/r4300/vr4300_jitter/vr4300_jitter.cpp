@@ -666,8 +666,11 @@ void VR4300_Jitter::generate_asm()
 
 #if !HUGE_MAP_FOR_ENTRY_POINTS
     MOV(32, R(RSCRATCH), R(RSCRATCH_PC));
-    TEST(32, R(RSCRATCH), Imm32(0x40000000));
-    FixupBranch does_not_need_translation = J_CC(CC_Z);
+    MOV(32, R(RSCRATCH2), R(RSCRATCH_PC));
+    AND(32, R(RSCRATCH), Imm32(0xC0000000));
+    CMP(32, R(RSCRATCH), Imm32(0x80000000));
+
+    FixupBranch does_not_need_translation = J_CC(CC_E);
 
     SHR(32, R(RSCRATCH2), Imm8(12));
     MOV(32, R(RSCRATCH2), MComplex(RSCRATCH_EXTRA, RSCRATCH2, SCALE_4, 0));
@@ -684,13 +687,16 @@ void VR4300_Jitter::generate_asm()
     JMPptr(R(RSCRATCH));
     SetJumpTarget(fast_dispatcher_did_not_find_block);
 
+
 #else
     MOV(32, R(RSCRATCH), R(RSCRATCH_PC));
 
 #if !FAST_DISPATCHER_ALWAYS_TRANSLATE
-    TEST(32, R(RSCRATCH), Imm32(0x40000000));
+    AND(32, R(RSCRATCH), Imm32(0xC0000000));
+    CMP(32, R(RSCRATCH), Imm32(0x80000000));
 
-    FixupBranch does_need_translation = J_CC(CC_NZ, XEmitter::Jump::Near);
+    FixupBranch does_need_translation = J_CC(CC_NE, XEmitter::Jump::Near);
+    MOV(32, R(RSCRATCH), R(RSCRATCH_PC));
     MOV(32, R(RSCRATCH2), R(RSCRATCH_PC));
     // AddressToLookupIndex:
     AND(32, R(RSCRATCH), Imm32(0x7FF000));
@@ -703,6 +709,7 @@ void VR4300_Jitter::generate_asm()
     FixupBranch fast_dispatcher_did_not_find_block = J_CC(CC_Z, XEmitter::Jump::Near);
     JMPptr(R(RSCRATCH));
     SetJumpTarget(does_need_translation);
+    MOV(32, R(RSCRATCH), R(RSCRATCH_PC));
 #endif
     // translate PC
     MOV(32, R(RSCRATCH2), R(RSCRATCH_PC));
@@ -2487,8 +2494,11 @@ void VR4300_Jitter::compile_invalidate_code(const RCOpArg &addr, uint32_t addr_o
         SHL(32, R(RSCRATCH2), Imm8(2));
 
         // Address translation
-        TEST(32, R(RSCRATCH2), Imm32(0x40000000));
-        FixupBranch dont_need_translation = J_CC(CC_Z);
+        MOV(32, R(scratch), R(RSCRATCH2));
+        AND(32, R(scratch), Imm32(0xC0000000));
+        CMP(32, R(scratch), Imm32(0x80000000));
+
+        FixupBranch dont_need_translation = J_CC(CC_E);
 
         MOV(64, R(scratch), ImmPtr(&m_r4300->cp0.tlb.LUT_r[0]));
         SHR(32, R(RSCRATCH2), Imm8(12));
@@ -3678,11 +3688,14 @@ void VR4300_Jitter::embed_valid_block_check(u32 address, bool force_check, bool 
 void VR4300_Jitter::embed_valid_block_check_pc()
 {
     MOV(32, R(RSCRATCH), HOTSTATE_VAR(pc));
-    TEST(32, R(RSCRATCH), Imm32(0x40000000));
-    FixupBranch translation_needed = J_CC(CC_NZ, XEmitter::Jump::Near);
+    AND(32, R(RSCRATCH), Imm32(0xC0000000));
+    CMP(32, R(RSCRATCH), Imm32(0x80000000));
+
+    FixupBranch translation_needed = J_CC(CC_NE, XEmitter::Jump::Near);
     switch_to_far_code();
     SetJumpTarget(translation_needed);
 
+    MOV(32, R(RSCRATCH), HOTSTATE_VAR(pc));
     SHR(32, R(RSCRATCH), Imm8(12));
 
     MOV(64, R(RSCRATCH2), ImmPtr(m_valid_virtual_block));
