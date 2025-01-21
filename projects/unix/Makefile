@@ -707,10 +707,11 @@ ifneq ($(DYNAREC), )
       CXXFLAGS+=-DVR4300_JITTER=1 -I$(SRCDIR)/device/r4300/vr4300_jitter -std=c++20
       SOURCE += \
         $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter.cpp \
-        $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter_float.cpp \
         $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter_branch.cpp \
-        $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter_integer.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter_float.cpp \
         $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter_instruction_decoder.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter_integer.cpp \
+        $(SRCDIR)/device/r4300/vr4300_jitter/vr4300_jitter_loadstore.cpp \
         $(SRCDIR)/device/r4300/vr4300_jitter/Common/x64Emitter.cpp \
         $(SRCDIR)/device/r4300/vr4300_jitter/Common/MemArenaUnix.cpp \
         $(SRCDIR)/device/r4300/vr4300_jitter/Common/x64ABI.cpp \
