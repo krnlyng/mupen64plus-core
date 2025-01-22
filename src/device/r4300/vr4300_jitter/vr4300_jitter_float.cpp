@@ -490,41 +490,26 @@ void VR4300_Jitter::recompile_CVT_S_D(struct jit_instr *op)
 
 void VR4300_Jitter::recompile_CVT_S_L(struct jit_instr *op)
 {
-    if (op->s == op->d) {
-        VALIDATE_FIN(op, s);
-        VALIDATE_FOUT32(op, d);
+    VALIDATE_FIN(op, s);
+    VALIDATE_FOUT32(op, d);
 
-        RCOpArg Rs = m_fpr.Use(op->s, RCMode::Read);
-        RegCache::Realize(Rs);
-        MOVSD(XMM0, Rs);
-        Rs.Unlock();
+    RCX64Reg gprscratch = m_gpr.Scratch();
+    RegCache::Realize(gprscratch);
 
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
-        RegCache::Realize(Rd);
+    load_cop1_register_to_host_register(op, 64, op->s, gprscratch);
 
-        compile_fpu_reset_cause(op);
-        compile_fpu_reset_exceptions(op);
+    RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+    RegCache::Realize(Rd);
 
-        CVTSS2SD(Rd, R(XMM0));
+    compile_fpu_reset_cause(op);
+    compile_fpu_reset_exceptions(op);
 
-        compile_fpu_check_exceptions(op);
-        compile_fpu_check_output_float(op, Rd);
-    } else {
-        VALIDATE_FIN(op, s);
-        VALIDATE_FOUT32(op, d);
+    PXOR(XMM0, R(XMM0));
+    CVTSI2SS64(XMM0, R(gprscratch));
+    MOVSS(Rd, XMM0);
 
-        RCOpArg Rs = m_fpr.Use(op->s, RCMode::Read);
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
-        RegCache::Realize(Rs, Rd);
-
-        compile_fpu_reset_cause(op);
-        compile_fpu_reset_exceptions(op);
-
-        CVTSS2SD(Rd, Rs);
-
-        compile_fpu_check_exceptions(op);
-        compile_fpu_check_output_float(op, Rd);
-    }
+    compile_fpu_check_exceptions(op);
+    compile_fpu_check_output_float(op, Rd);
 }
 
 void VR4300_Jitter::recompile_CVT_W_D(struct jit_instr *op)

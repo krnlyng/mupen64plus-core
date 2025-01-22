@@ -2401,6 +2401,16 @@ void XEmitter::CVTSI2SS(X64Reg regOp, const OpArg& arg)
 {
   WriteSSEOp(0xF3, 0x2A, regOp, arg);
 }
+void XEmitter::CVTSI2SS64(X64Reg regOp, const OpArg& in_arg)
+{
+  Write8(0xF3);
+  OpArg arg = in_arg;
+  arg.operandReg = regOp;
+  arg.WriteREX(this, 64, 0);
+  Write8(0x0F);
+  Write8(0x2A);
+  arg.WriteRest(this, 0);
+}
 
 void XEmitter::CVTDQ2PD(X64Reg regOp, const OpArg& arg)
 {

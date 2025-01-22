@@ -725,6 +725,7 @@ public:
   void CVTPD2PS(X64Reg dest, const OpArg& src);
   void CVTSS2SD(X64Reg dest, const OpArg& src);
   void CVTSI2SS(X64Reg dest, const OpArg& src);
+  void CVTSI2SS64(X64Reg dest, const OpArg& src);
   void CVTSD2SS(X64Reg dest, const OpArg& src);
   void CVTSI2SD(X64Reg dest, const OpArg& src);
   void CVTDQ2PD(X64Reg regOp, const OpArg& arg);
