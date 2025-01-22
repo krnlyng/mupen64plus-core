@@ -1603,8 +1603,9 @@ void VR4300_Jitter::recompile_DIV(struct jit_instr *op, bool un_signed)
     VALIDATE_IN(op, s);
     VALIDATE_IN(op, t);
 
-    RCOpArg Rs = m_gpr.Use(op->s, RCMode::Read);
-    RCOpArg Rt = m_gpr.Use(op->t, RCMode::Read);
+    RCOpArg Rs = op->s ? m_gpr.Use(op->s, RCMode::Read) : RCOpArg::Imm64(0);
+    RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
+
     RegCache::Realize(Rs, Rt);
 
     if (Rs.IsImm() && Rt.IsImm()) {
