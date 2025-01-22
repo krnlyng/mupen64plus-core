@@ -108,17 +108,10 @@ uint32_t* r4300_cp1_fcr31(struct cp1* cp1)
     return &cp1->recompiler_hot_state->cp1_fcr31;
 #endif
 }
-#include <stdio.h>
+
 void set_fpr_pointers(struct cp1* cp1, uint32_t newStatus)
 {
     int i;
-
-#if defined(VR4300_JITTER)
-    // The vr4300_jitter generates code differently
-    // depending on whether the FR flag is set or not
-    // thus we need to clear the cache when it changes.
-    vr4300_jitter_invalidate_cached_code(NULL, 0, 0);
-#endif
 
     // update the FPR register pointers
     if ((newStatus & CP0_STATUS_FR) == 0)

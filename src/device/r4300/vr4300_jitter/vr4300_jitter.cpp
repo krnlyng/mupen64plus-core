@@ -663,6 +663,12 @@ void VR4300_Jitter::generate_asm()
     MOV(32, R(RSCRATCH_PC), HOTSTATE_VAR(pc));
     MOV(64, R(RSCRATCH_EXTRA), ImmPtr(&m_r4300->cp0.tlb.LUT_r[0]));
     MOV(64, R(RSCRATCH_EXTRA2), ImmPtr(m_block_cache.GetEntryPoints()));
+    MOV(32, R(RSCRATCH_EXTRA3), HOTSTATE_VAR(fr_is_set));
+#if !HUGE_MAP_FOR_ENTRY_POINTS
+    SHL(64, R(RSCRATCH_EXTRA3), Imm8(32));
+#else
+    SHL(32, R(RSCRATCH_EXTRA3), Imm8(12 + 11));
+#endif
 
 #if !HUGE_MAP_FOR_ENTRY_POINTS
     MOV(32, R(RSCRATCH), R(RSCRATCH_PC));
@@ -678,7 +684,9 @@ void VR4300_Jitter::generate_asm()
     TEST(32, R(RSCRATCH2), R(RSCRATCH2));
     FixupBranch needs_slow_dispatcher = J_CC(CC_Z, XEmitter::Jump::Near);
 
+    // AddressToLookupIndex
     MOV(32, R(RSCRATCH2), R(RSCRATCH_PC));
+    OR(64, R(RSCRATCH2), R(RSCRATCH_EXTRA3));
     SetJumpTarget(does_not_need_translation);
     MOV(64, R(RSCRATCH), MComplex(RSCRATCH_EXTRA2, RSCRATCH2, SCALE_2, 0));
 
@@ -700,6 +708,7 @@ void VR4300_Jitter::generate_asm()
     MOV(32, R(RSCRATCH2), R(RSCRATCH_PC));
     // AddressToLookupIndex:
     AND(32, R(RSCRATCH), Imm32(0x7FF000));
+    OR(32, R(RSCRATCH), R(RSCRATCH_EXTRA3));
     SHL(64, R(RSCRATCH), Imm8(32 - 12));
     OR(64, R(RSCRATCH2), R(RSCRATCH));
 
@@ -731,6 +740,7 @@ void VR4300_Jitter::generate_asm()
     MOV(32, R(RSCRATCH2), R(RSCRATCH_PC));
     // AddressToLookupIndex:
     AND(32, R(RSCRATCH), Imm32(0x7FF000));
+    OR(32, R(RSCRATCH), R(RSCRATCH_EXTRA3));
     SHL(64, R(RSCRATCH), Imm8(32 - 12));
     OR(64, R(RSCRATCH2), R(RSCRATCH));
 
@@ -960,8 +970,8 @@ void vr4300_jitter_core_compare(void)
 #if defined(COMPARE_CORE)
     CoreCompareCallback();
     if (HOT_STATE->stop) {
-        fprintf(stderr, "LAST INSTRUCTIONS:\n");
-        for (int i = HOT_STATE->last_idx + 1, j = 0; i < NUM_DBG_INSTRUCTIONS + HOT_STATE->last_idx + 1; i++) {
+        fprintf(stderr, "LAST INSTRUCTIONS (FR: %d):\n", HOT_STATE->fr_is_set);
+        for (int i = HOT_STATE->last_idx, j = 0; i < NUM_DBG_INSTRUCTIONS + HOT_STATE->last_idx; i++) {
             int k = i % NUM_DBG_INSTRUCTIONS;
             fprintf(stderr, "%d, %x, %s %x\n", j++, HOT_STATE->last_addresses[k], HOT_STATE->last_names[k], HOT_STATE->last_instructions[k]);
             struct jit_instr instr;

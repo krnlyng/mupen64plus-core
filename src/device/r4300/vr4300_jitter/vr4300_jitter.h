@@ -139,7 +139,7 @@ struct recompiler_hot_state
     int ctc2_check_compiled;
     int is_idle_wait_loop;
     uint32_t branch_to;
-    int fr_is_set;
+    uint32_t fr_is_set;
 
     struct precomp_instr *fake_pc;
     int exception;

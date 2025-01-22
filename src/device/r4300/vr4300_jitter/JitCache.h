@@ -29,6 +29,7 @@ struct JitBlock {
 
     uint32_t physical_address;
     uint32_t virtual_address;
+    bool fr_is_set;
 
     struct LinkData
     {
@@ -48,11 +49,11 @@ struct JitBlock {
 class JitCache {
 private:
 #if !HUGE_MAP_FOR_ENTRY_POINTS
-    // (virtual / 4-byte alignment) * sizeof(void*)
-    static constexpr u64 FAST_BLOCK_MAP_SIZE = 0x2'0000'0000;
+    // (fr_is_set + virtual / 4-byte alignment) * sizeof(void*)
+    static constexpr u64 FAST_BLOCK_MAP_SIZE = 0x4'0000'0000;
 #else
-    // ((virtual + (physical & 0x7FF000)) / 4-byte alignment) * sizeof(void*)
-    static constexpr u64 FAST_BLOCK_MAP_SIZE = 0x2000'0000'0000;
+    // ((fr_is_set + virtual + (physical & 0x7FF000)) / 4-byte alignment) * sizeof(void*)
+    static constexpr u64 FAST_BLOCK_MAP_SIZE = 0x4000'0000'0000;
 #endif
     Common::LazyMemoryRegion m_entry_points_arena;
     u8** m_entry_points_ptr = 0;
@@ -61,7 +62,7 @@ private:
 #else
     u64
 #endif
-    AddressToLookupIndex(u32 virtual_address, u32 physical_address);
+    AddressToLookupIndex(u32 virtual_address, u32 physical_address, bool fr_is_set);
 
     std::multimap<u32, JitBlock> m_block_map;
 
@@ -77,7 +78,7 @@ private:
 
     void LinkBlockExits(JitBlock &block);
 
-    JitBlock *GetBlockFromStartAddress(u32 virtual_address, u32 physical_address);
+    JitBlock *GetBlockFromStartAddress(u32 virtual_address, u32 physical_address, bool fr_is_set);
     void UnlinkBlock(JitBlock& block);
     void WriteLinkBlock(const JitBlock::LinkData& source, const JitBlock* dest);
 

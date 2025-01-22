@@ -15,6 +15,7 @@ constexpr Gen::X64Reg RSCRATCH = Gen::RAX;
 constexpr Gen::X64Reg RSCRATCH2 = Gen::RDX;
 constexpr Gen::X64Reg RSCRATCH_EXTRA = Gen::RCX;
 constexpr Gen::X64Reg RSCRATCH_EXTRA2 = Gen::R12;
+constexpr Gen::X64Reg RSCRATCH_EXTRA3 = Gen::R14;
 constexpr Gen::X64Reg RSCRATCH_PC = Gen::R13;
 
 #if USE_REG_FOR_FLAGS

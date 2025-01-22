@@ -7,13 +7,14 @@
 
 #include "vr4300_jitter_internal.h"
 
-JitBlock *JitCache::GetBlockFromStartAddress(u32 virtual_address, u32 physical_address)
+JitBlock *JitCache::GetBlockFromStartAddress(u32 virtual_address, u32 physical_address, bool fr_is_set)
 {
     auto iter = m_block_map.equal_range(physical_address);
     for (; iter.first != iter.second; iter.first++) {
         JitBlock& b = iter.first->second;
         if ((b.physical_address == physical_address)
-            && (b.virtual_address == virtual_address)) {
+            && (b.virtual_address == virtual_address)
+            && (b.fr_is_set == fr_is_set)) {
             return &b;
         }
     }
@@ -27,7 +28,7 @@ void JitCache::LinkBlockExits(JitBlock& block)
     {
         if (!e.linkStatus)
         {
-            JitBlock* destinationBlock = GetBlockFromStartAddress(e.exitAddress, e.exitAddressPhysical);
+            JitBlock* destinationBlock = GetBlockFromStartAddress(e.exitAddress, e.exitAddressPhysical, block.fr_is_set);
             if (destinationBlock)
             {
                 WriteLinkBlock(e, destinationBlock);
@@ -56,6 +57,7 @@ JitBlock *JitCache::AllocateBlock(uint32_t virtual_address, uint32_t physical_ad
 
     block.physical_address = physical_address;
     block.virtual_address = virtual_address;
+    block.fr_is_set = HOT_STATE->fr_is_set;
 
 #ifndef NDEBUG
     if (block.linkData.size() > 0) {
@@ -109,7 +111,7 @@ void JitCache::FinalizeBlock(JitBlock &block, const std::set<u32>& virtual_addre
     block.virtual_addresses = virtual_addresses;
 
     if (m_entry_points_ptr) {
-        m_entry_points_ptr[AddressToLookupIndex(block.virtual_address, block.physical_address)] = block.host_entry;
+        m_entry_points_ptr[AddressToLookupIndex(block.virtual_address, block.physical_address, block.fr_is_set)] = block.host_entry;
     }
 
     for (const auto& e : block.linkData) {
@@ -177,7 +179,7 @@ const void *JitCache::Dispatch(uint32_t address)
         return nullptr;
     }
 
-    JitBlock *block = GetBlockFromStartAddress(address, physical_address);
+    JitBlock *block = GetBlockFromStartAddress(address, physical_address, HOT_STATE->fr_is_set);
 
     if (block) {
         return block->host_entry;
@@ -193,7 +195,7 @@ void JitCache::DestroyBlock(JitBlock &block)
 #endif
 
     if (m_entry_points_ptr) {
-        m_entry_points_ptr[AddressToLookupIndex(block.virtual_address, block.physical_address)] = 0;
+        m_entry_points_ptr[AddressToLookupIndex(block.virtual_address, block.physical_address, block.fr_is_set)] = 0;
     }
 
     VR4300_Jitter::GetInstance()->ReleaseCodeSpace(block.code_begin, block.code_end, block.farcode_begin, block.farcode_end);
@@ -307,14 +309,14 @@ u32
 #else
 u64
 #endif
-JitCache::AddressToLookupIndex(u32 virtual_address, u32 physical_address)
+JitCache::AddressToLookupIndex(u32 virtual_address, u32 physical_address, bool fr_is_set)
 {
     ASSERT((0xFF800000 & physical_address) == 0);
 
 #if !HUGE_MAP_FOR_ENTRY_POINTS
-    return virtual_address >> 2;
+    return (virtual_address >> 2) | ((fr_is_set ? 1 : 0) << 30);
 #else
-    return (((u64)((u64)physical_address & 0x7FF000) << 20) | (u64)virtual_address) >> 2;
+    return ((((u64)((u64)(((fr_is_set ? 1 : 0) << (12 + 11)) | ((u64)physical_address & 0x7FF000))) << 20) | (u64)virtual_address) >> 2);
 #endif
 }
 
