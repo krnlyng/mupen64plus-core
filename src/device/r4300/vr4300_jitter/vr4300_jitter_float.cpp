@@ -1237,7 +1237,7 @@ void VR4300_Jitter::recompile_CVT_L_S(struct jit_instr *op)
     VALIDATE_FOUT(op, d);
 
     RCOpArg Rs = m_fpr.Use(op->s, RCMode::Read, true);
-    RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+    RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
     RCX64Reg scratch2 = m_fpr.Scratch();
     RCOpArg gprscratch = m_gpr.Scratch();
     RegCache::Realize(Rs, Rd, scratch2, gprscratch);
