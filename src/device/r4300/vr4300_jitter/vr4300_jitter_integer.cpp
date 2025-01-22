@@ -1430,9 +1430,10 @@ void VR4300_Jitter::recompile_DMULT(struct jit_instr *op)
         RegCache::Realize(Rs, Rt, rdx);
 
         MOV(64, rdx, Rt);
+        MOV(64, R(RSCRATCH), Rs);
 
         assert(rdx == RDX);
-        IMUL(64, RSCRATCH, rdx, Rs);
+        IMUL(64, RSCRATCH, rdx);
 
         MOV(64, (HOTSTATE_VAR(lo)), R(RSCRATCH));
         MOV(64, (HOTSTATE_VAR(hi)), R(rdx));
