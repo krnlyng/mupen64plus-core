@@ -413,7 +413,7 @@ void VR4300_Jitter::recompile_SUB(struct jit_instr *op)
         }
 
         if ((m_gpr.IsImm(op->s) || !op->s) && (m_gpr.IsImm(op->t) || !op->t)) {
-            m_gpr.SetImmediate64(op->d, (u32)doop(op->s ? (u32)m_gpr.Imm64(op->s) : 0, op->t ? (u32)m_gpr.Imm64(op->t) : 0));
+            m_gpr.SetImmediate64(op->d, (s64)(s32)doop(op->s ? (u32)m_gpr.Imm64(op->s) : 0, op->t ? (u32)m_gpr.Imm64(op->t) : 0));
         } else {
             RCOpArg Rs = op->s ? m_gpr.Use(op->s, RCMode::Read) : RCOpArg::Imm64(0);
             RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
