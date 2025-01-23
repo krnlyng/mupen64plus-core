@@ -230,7 +230,7 @@ private:
         void mov_2(int bits1, const Gen::X64Reg &dest1, int bits2, const Gen::X64Reg &dest2, const RCOpArg &source1, const RCOpArg &source2);
         // Similar as above but for 3 arguments
         void mov_3(int bits, const Gen::X64Reg &dest1, const Gen::X64Reg &dest2, const Gen::X64Reg &dest3, const RCOpArg &source1, const RCOpArg &source2, const RCOpArg &source3);
-        BitSet32 caller_saved_registers_in_use(void);
+        BitSet32 caller_saved_registers_in_use();
         void emit_core_compare();
 
         void generate_asm();

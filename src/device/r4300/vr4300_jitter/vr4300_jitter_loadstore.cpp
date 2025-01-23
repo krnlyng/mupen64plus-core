@@ -40,7 +40,7 @@ static unsigned int hshift(uint32_t address)
 u32 read_word_from_dynarec(u32 lsaddr)
 {
     u32 value;
-    if (r4300_read_aligned_word(&g_dev.r4300, lsaddr, &value)) {
+    if (r4300_read_aligned_word(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr, &value)) {
         return value;
     }
 
@@ -53,8 +53,8 @@ u32 read_word_from_dynarec(u32 lsaddr)
 u32 read_word_from_dynarec_set_llbit_on_success(u32 lsaddr)
 {
     u32 value;
-    if (r4300_read_aligned_word(&g_dev.r4300, lsaddr, &value)) {
-        *r4300_llbit(&g_dev.r4300) = 1;
+    if (r4300_read_aligned_word(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr, &value)) {
+        *r4300_llbit(VR4300_Jitter::GetInstance()->GetR4300Core()) = 1;
         return value;
     }
 
@@ -68,7 +68,7 @@ u32 read_hword_from_dynarec(u32 lsaddr)
 {
     u32 value;
     unsigned int shift = hshift(lsaddr);
-    if (r4300_read_aligned_word(&g_dev.r4300, lsaddr, &value)) {
+    if (r4300_read_aligned_word(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr, &value)) {
         return (value >> shift) & 0xffff;
     }
 
@@ -81,7 +81,7 @@ u32 read_hword_from_dynarec(u32 lsaddr)
 u64 read_dword_from_dynarec(u32 lsaddr)
 {
     u64 value;
-    if (r4300_read_aligned_dword(&g_dev.r4300, lsaddr, &value)) {
+    if (r4300_read_aligned_dword(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr, &value)) {
         return value;
     }
 
@@ -95,7 +95,7 @@ u32 read_byte_unsigned_from_dynarec(u32 lsaddr)
 {
     u32 value;
     unsigned int shift = bshift(lsaddr);
-    if (r4300_read_aligned_word(&g_dev.r4300, lsaddr, &value)) {
+    if (r4300_read_aligned_word(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr, &value)) {
         return (value >> shift) & 0xff;
     }
 
@@ -107,30 +107,71 @@ u32 read_byte_unsigned_from_dynarec(u32 lsaddr)
 
 void write_word_from_dynarec(u32 lsaddr, u32 value)
 {
-    r4300_write_aligned_word(&g_dev.r4300, lsaddr, value, ~UINT32_C(0));
+    r4300_write_aligned_word(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr, value, ~UINT32_C(0));
 }
 
-void write_word_from_dynarec_with_mask(u32 lsaddr, u32 value, u32 mask)
+#define BITS_BELOW_MASK32(x) ((UINT32_C(1) << (x)) - 1)
+#define BITS_ABOVE_MASK32(x) (~(BITS_BELOW_MASK32((x))))
+
+#define BITS_BELOW_MASK64(x) ((UINT64_C(1) << (x)) - 1)
+#define BITS_ABOVE_MASK64(x) (~(BITS_BELOW_MASK64((x))))
+
+void write_word_from_dynarec_SWL(u32 lsaddr, u32 value)
 {
-    r4300_write_aligned_word(&g_dev.r4300, lsaddr, value, mask);
+    unsigned int n = (lsaddr & 3);
+    unsigned int shift = 8 * n;
+    uint32_t mask = (n == 0)
+        ? ~UINT32_C(0)
+        : BITS_BELOW_MASK32(8 * (4 - n));
+
+    r4300_write_aligned_word(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr & ~UINT32_C(0x3), value >> shift, mask);
+}
+
+void write_word_from_dynarec_SWR(u32 lsaddr, u32 value)
+{
+    unsigned int n = (lsaddr & 3);
+    unsigned int shift = 8 * (3 - n);
+    uint32_t mask = BITS_ABOVE_MASK32(8 * (3 - n));
+
+    r4300_write_aligned_word(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr & ~UINT32_C(0x3), value << shift, mask);
+}
+
+void write_dword_from_dynarec_SDL(u32 lsaddr, u64 value)
+{
+    unsigned int n = (lsaddr & 7);
+    unsigned int shift = 8 * n;
+    uint64_t mask = (n == 0)
+        ? ~UINT64_C(0)
+        : BITS_BELOW_MASK64(8 * (8 - n));
+
+    r4300_write_aligned_dword(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr & ~UINT32_C(0x7), value >> shift, mask);
+}
+
+void write_dword_from_dynarec_SDR(u32 lsaddr, u64 value)
+{
+    unsigned int n = (lsaddr & 7);
+    unsigned int shift = 8 * (7 - n);
+    uint64_t mask = BITS_ABOVE_MASK64(8 * (7 - n));
+
+    r4300_write_aligned_dword(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr & ~UINT32_C(0x7), value << shift, mask);
 }
 
 void write_hword_from_dynarec(u32 lsaddr, u32 value)
 {
     unsigned int shift = hshift(lsaddr);
 
-    r4300_write_aligned_word(&g_dev.r4300, lsaddr, value << shift, UINT32_C(0xffff) << shift);
+    r4300_write_aligned_word(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr, value << shift, UINT32_C(0xffff) << shift);
 }
 
 void write_dword_from_dynarec(u32 lsaddr, u64 value)
 {
-    r4300_write_aligned_dword(&g_dev.r4300, lsaddr, value, ~UINT64_C(0));
+    r4300_write_aligned_dword(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr, value, ~UINT64_C(0));
 }
 
 void write_byte_from_dynarec(u32 lsaddr, u32 value)
 {
     unsigned int shift = bshift(lsaddr);
-    r4300_write_aligned_word(&g_dev.r4300, lsaddr, value << shift, UINT32_C(0xff) << shift);
+    r4300_write_aligned_word(VR4300_Jitter::GetInstance()->GetR4300Core(), lsaddr, value << shift, UINT32_C(0xff) << shift);
 }
 
 void VR4300_Jitter::recompile_LW(struct jit_instr *op, bool unsigned_lw)
@@ -144,6 +185,7 @@ void VR4300_Jitter::recompile_LW(struct jit_instr *op, bool unsigned_lw)
     if (op->t) {
         u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
         u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
         if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && (vr4300_jitter_is_rdram_address(address) || (vr4300_jitter_is_mi_regs_address(address)))))) {
             RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::Write);
             RegCache::Realize(Rt);
@@ -156,7 +198,7 @@ void VR4300_Jitter::recompile_LW(struct jit_instr *op, bool unsigned_lw)
                 }
                 exception_check = false;
             } else if (vr4300_jitter_is_mi_regs_address(address)) {
-                MOV(64, R(RSCRATCH), ImmPtr(&g_dev.r4300.mi->regs[mi_reg(address)]));
+                MOV(64, R(RSCRATCH), ImmPtr(&VR4300_Jitter::GetInstance()->GetR4300Core()->mi->regs[mi_reg(address)]));
                 if (unsigned_lw) {
                     MOVZX(64, 32, Rt, MatR(RSCRATCH));
                 } else {
@@ -166,11 +208,14 @@ void VR4300_Jitter::recompile_LW(struct jit_instr *op, bool unsigned_lw)
             } else {
                 abort();
             }
-        } else {
+        } else
+#endif
+        {
             RCX64Reg Rt = m_gpr.RevertableBind(op->t, RCMode::Write);
             RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
             RegCache::Realize(Rb, Rt);
 
+#if !DISABLE_FASTMEM
             u8 *code_before = GetWritableCodePtr();
 
             OpArg memory_location;
@@ -180,11 +225,7 @@ void VR4300_Jitter::recompile_LW(struct jit_instr *op, bool unsigned_lw)
                 address_or_address_reg = RCOpArg::Imm64(address & ~3);
                 memory_location = MDisp(RDRAM, address & ~3);
             } else {
-                if (op->f) {
-                    MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-                } else {
-                    MOV(32, R(RSCRATCH), Rb);
-                }
+                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
                 AND(32, R(RSCRATCH), Imm32(~3));
                 address_or_address_reg = RCOpArg::R(RSCRATCH);
                 memory_location = MRegSum(RDRAM, RSCRATCH);
@@ -204,15 +245,12 @@ void VR4300_Jitter::recompile_LW(struct jit_instr *op, bool unsigned_lw)
 
             switch_to_far_code();
             info.farcode = GetCodePtr();
-
+#endif
             update_hot_cycles(op);
 
             BitSet32 registers_in_use = caller_saved_registers_in_use();
             ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-            if (!Rb.IsSimpleReg(ABI_PARAM1)) {
-                MOV(64, R(ABI_PARAM1), Rb);
-            }
-            if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
+            MOV_sum(32, ABI_PARAM1, Rb, Imm32((u32)(s16)op->f));
             ABI_CallFunction(read_word_from_dynarec);
             ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
             if (unsigned_lw) {
@@ -226,11 +264,13 @@ void VR4300_Jitter::recompile_LW(struct jit_instr *op, bool unsigned_lw)
             // tlb exception check
             compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
             if (is_in_far_code()) {
                 FixupBranch near_code = J(XEmitter::Jump::Near);
                 switch_to_near_code();
                 SetJumpTarget(near_code);
             }
+#endif
         }
     }
 }
@@ -251,6 +291,7 @@ void VR4300_Jitter::recompile_LL(struct jit_instr *op)
     if (op->t) {
         u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
         u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
         if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
             RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::Write);
             RegCache::Realize(Rt);
@@ -262,11 +303,14 @@ void VR4300_Jitter::recompile_LL(struct jit_instr *op)
             } else {
                 abort();
             }
-        } else {
+        } else
+#endif
+        {
             RCX64Reg Rt = m_gpr.RevertableBind(op->t, RCMode::Write);
             RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
             RegCache::Realize(Rb, Rt);
 
+#if !DISABLE_FASTMEM
             u8 *code_before = GetWritableCodePtr();
 
             OpArg memory_location;
@@ -276,11 +320,7 @@ void VR4300_Jitter::recompile_LL(struct jit_instr *op)
                 address_or_address_reg = RCOpArg::Imm64(address & ~3);
                 memory_location = MDisp(RDRAM, address & ~3);
             } else {
-                if (op->f) {
-                    MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-                } else {
-                    MOV(32, R(RSCRATCH), Rb);
-                }
+                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
                 AND(32, R(RSCRATCH), Imm32(~3));
                 address_or_address_reg = RCOpArg::R(RSCRATCH);
                 memory_location = MRegSum(RDRAM, RSCRATCH);
@@ -297,15 +337,12 @@ void VR4300_Jitter::recompile_LL(struct jit_instr *op)
 
             switch_to_far_code();
             info.farcode = GetCodePtr();
-
+#endif
             update_hot_cycles(op);
 
             BitSet32 registers_in_use = caller_saved_registers_in_use();
             ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-            if (!Rb.IsSimpleReg(ABI_PARAM1)) {
-                MOV(64, R(ABI_PARAM1), Rb);
-            }
-            if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
+            MOV_sum(32, ABI_PARAM1, Rb, Imm32((u32)(s16)op->f));
             ABI_CallFunction(read_word_from_dynarec_set_llbit_on_success);
             ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
             MOVSX(64, 32, Rt, R(ABI_RETURN));
@@ -315,20 +352,16 @@ void VR4300_Jitter::recompile_LL(struct jit_instr *op)
             // tlb exception check
             compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
             if (is_in_far_code()) {
                 FixupBranch near_code = J(XEmitter::Jump::Near);
                 switch_to_near_code();
                 SetJumpTarget(near_code);
             }
+#endif
         }
     }
 }
-
-#define BITS_BELOW_MASK32(x) ((UINT32_C(1) << (x)) - 1)
-#define BITS_ABOVE_MASK32(x) (~(BITS_BELOW_MASK32((x))))
-
-#define BITS_BELOW_MASK64(x) ((UINT64_C(1) << (x)) - 1)
-#define BITS_ABOVE_MASK64(x) (~(BITS_BELOW_MASK64((x))))
 
 void VR4300_Jitter::recompile_LWL(struct jit_instr *op)
 {
@@ -348,6 +381,7 @@ void VR4300_Jitter::recompile_LWL(struct jit_instr *op)
 
         u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
         u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
         if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
             RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::ReadWrite);
             u32 base = op->b ? m_gpr.Imm64(op->b) : 0;
@@ -376,17 +410,22 @@ void VR4300_Jitter::recompile_LWL(struct jit_instr *op)
             } else {
                 abort();
             }
-        } else {
+        } else
+#endif
+        {
             RCX64Reg Rt = m_gpr.RevertableBind(op->t, RCMode::ReadWrite);
             RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
             RCX64Reg scratch = m_gpr.Scratch();
             RegCache::Realize(Rb, Rt, scratch);
 
+#if !DISABLE_FASTMEM
             u8 *code_before = GetWritableCodePtr();
+#endif
 
             OpArg memory_location;
             RCOpArg address_or_address_reg;
 
+#if !DISABLE_FASTMEM
             if (m_gpr.IsImm(op->b)) {
                 address_or_address_reg = RCOpArg::Imm64(address & ~3);
                 unsigned int n = (address & 3);
@@ -397,20 +436,15 @@ void VR4300_Jitter::recompile_LWL(struct jit_instr *op)
                 MOV(32, R(scratch), Imm32(mask));
                 memory_location = MDisp(RDRAM, address & ~3);
             } else {
-                if (op->f) {
-                    MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-                } else {
-                    MOV(32, R(RSCRATCH), Rb);
-                }
-
+                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
                 MOV(32, R(RSCRATCH2), R(RSCRATCH));
                 AND(32, R(RSCRATCH), Imm32(~UINT32_C(3)));
                 AND(32, R(RSCRATCH2), Imm32(3));
-                SHL(32, R(RSCRATCH2), Imm8(3)); // RSCRATCH2 = shift
+                SHL(32, R(RSCRATCH2), Imm8(3)); /* RSCRATCH2 = shift */
 
                 MOV(32, R(scratch), Imm32(1));
                 SHLX(32, scratch, R(scratch), RSCRATCH2);
-                SUB(32, R(scratch), Imm32(1)); // scratch = mask
+                SUB(32, R(scratch), Imm32(1)); /* scratch = mask */
                 address_or_address_reg = RCOpArg::R(RSCRATCH);
                 memory_location = MRegSum(RDRAM, RSCRATCH);
             }
@@ -430,25 +464,18 @@ void VR4300_Jitter::recompile_LWL(struct jit_instr *op)
 
             switch_to_far_code();
             info.farcode = GetCodePtr();
-
+#endif
             update_hot_cycles(op);
 
             BitSet32 registers_in_use = caller_saved_registers_in_use();
             ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-            if (!Rb.IsSimpleReg(ABI_PARAM1)) {
-                MOV(64, R(ABI_PARAM1), Rb);
-            }
-            if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
+            MOV_sum(32, ABI_PARAM1, Rb, Imm32((u32)(s16)op->f));
             ABI_CallFunction(read_word_from_dynarec);
             ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
 
             assert(ABI_RETURN != RSCRATCH2 && ABI_RETURN != scratch && Rt != ABI_RETURN && Rt != RSCRATCH2);
 
-            if (op->f) {
-                MOV_sum(32, RSCRATCH2, Rb, Imm32((u32)(s16)op->f));
-            } else {
-                MOV(32, R(RSCRATCH2), Rb);
-            }
+            MOV_sum(32, RSCRATCH2, Rb, Imm32((u32)(s16)op->f));
             AND(32, R(RSCRATCH2), Imm32(3));
             SHL(32, R(RSCRATCH2), Imm8(3)); // RSCRATCH2 = shift
 
@@ -466,11 +493,13 @@ void VR4300_Jitter::recompile_LWL(struct jit_instr *op)
             // tlb exception check
             compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
             if (is_in_far_code()) {
                 FixupBranch near_code = J(XEmitter::Jump::Near);
                 switch_to_near_code();
                 SetJumpTarget(near_code);
             }
+#endif
         }
     }
 }
@@ -486,6 +515,7 @@ void VR4300_Jitter::recompile_LDL(struct jit_instr *op)
     if (op->t) {
         u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
         u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
         if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
             RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::ReadWrite);
             RegCache::Realize(Rt);
@@ -506,14 +536,19 @@ void VR4300_Jitter::recompile_LDL(struct jit_instr *op)
             } else {
                 abort();
             }
-        } else {
+        } else
+#endif
+        {
             RCX64Reg Rt = m_gpr.RevertableBind(op->t, RCMode::ReadWrite);
             RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
             RCX64Reg scratch = m_gpr.Scratch();
             RegCache::Realize(Rb, Rt, scratch);
 
+#if !DISABLE_FASTMEM
             u8 *code_before = GetWritableCodePtr();
+#endif
 
+#if !DISABLE_FASTMEM
             OpArg memory_location;
             RCOpArg address_or_address_reg;
 
@@ -527,20 +562,16 @@ void VR4300_Jitter::recompile_LDL(struct jit_instr *op)
                 MOV(32, R(scratch), Imm32(mask));
                 memory_location = MDisp(RDRAM, address & ~7);
             } else {
-                if (op->f) {
-                    MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-                } else {
-                    MOV(32, R(RSCRATCH), Rb);
-                }
+                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
                 MOV(32, R(RSCRATCH2), R(RSCRATCH));
                 AND(32, R(RSCRATCH), Imm32(~UINT32_C(7)));
 
                 AND(32, R(RSCRATCH2), Imm32(7));
-                SHL(32, R(RSCRATCH2), Imm8(3)); // RSCRATCH2 = shift
+                SHL(32, R(RSCRATCH2), Imm8(3)); /* RSCRATCH2 = shift */
 
                 MOV(32, R(scratch), Imm32(1));
                 SHLX(64, scratch, R(scratch), RSCRATCH2);
-                SUB(64, R(scratch), Imm32(1)); // scratch = mask
+                SUB(64, R(scratch), Imm32(1)); /* scratch = mask */
                 address_or_address_reg = RCOpArg::R(RSCRATCH);
                 memory_location = MRegSum(RDRAM, RSCRATCH);
             }
@@ -560,26 +591,19 @@ void VR4300_Jitter::recompile_LDL(struct jit_instr *op)
 
             switch_to_far_code();
             info.farcode = GetCodePtr();
-
+#endif
             update_hot_cycles(op);
 
             BitSet32 registers_in_use = caller_saved_registers_in_use();
             ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-            if (!Rb.IsSimpleReg(ABI_PARAM1)) {
-                MOV(64, R(ABI_PARAM1), Rb);
-            }
-            if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
+            MOV_sum(32, ABI_PARAM1, Rb, Imm32((u32)(s16)op->f));
             AND(32, R(ABI_PARAM1), Imm32(~UINT32_C(7)));
             ABI_CallFunction(read_dword_from_dynarec);
             ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
 
             assert(ABI_RETURN != RSCRATCH2 && ABI_RETURN != scratch && Rt != ABI_RETURN && Rt != RSCRATCH2);
 
-            if (op->f) {
-                MOV_sum(32, RSCRATCH2, Rb, Imm32((u32)(s16)op->f));
-            } else {
-                MOV(32, R(RSCRATCH2), Rb);
-            }
+            MOV_sum(32, RSCRATCH2, Rb, Imm32((u32)(s16)op->f));
             AND(32, R(RSCRATCH2), Imm32(7));
             SHL(32, R(RSCRATCH2), Imm8(3)); // RSCRATCH2 = shift
 
@@ -596,11 +620,13 @@ void VR4300_Jitter::recompile_LDL(struct jit_instr *op)
             // tlb exception check
             compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
             if (is_in_far_code()) {
                 FixupBranch near_code = J(XEmitter::Jump::Near);
                 switch_to_near_code();
                 SetJumpTarget(near_code);
             }
+#endif
         }
     }
 }
@@ -623,6 +649,7 @@ void VR4300_Jitter::recompile_LWR(struct jit_instr *op)
 
         u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
         u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
         if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
             RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::ReadWrite);
             RegCache::Realize(Rt);
@@ -650,14 +677,20 @@ void VR4300_Jitter::recompile_LWR(struct jit_instr *op)
             } else {
                 abort();
             }
-        } else {
+        } else
+#endif
+        {
             RCX64Reg Rt = m_gpr.RevertableBind(op->t, RCMode::ReadWrite);
             RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
             RCX64Reg scratch = m_gpr.Scratch(), scratch3 = m_gpr.Scratch();
             RegCache::Realize(Rb, Rt, scratch, scratch3);
 
+#if !DISABLE_FASTMEM
             u8 *code_before = GetWritableCodePtr();
+#endif
 
+
+#if !DISABLE_FASTMEM
             OpArg memory_location;
             RCOpArg address_or_address_reg;
 
@@ -674,19 +707,15 @@ void VR4300_Jitter::recompile_LWR(struct jit_instr *op)
 
                 memory_location = MDisp(RDRAM, address & ~3);
             } else {
-                if (op->f) {
-                    MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-                } else {
-                    MOV(32, R(RSCRATCH), Rb);
-                }
+                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
                 MOV(32, R(RSCRATCH2), R(RSCRATCH));
                 AND(32, R(RSCRATCH), Imm32(~UINT32_C(3)));
 
-                AND(32, R(RSCRATCH2), Imm32(3)); // n
+                AND(32, R(RSCRATCH2), Imm32(3)); /* n */
 
                 MOV(32, R(scratch3), Imm32(3));
                 SUB(32, R(scratch3), R(RSCRATCH2));
-                SHL(32, R(scratch3), Imm8(3)); // scratch3 = shift
+                SHL(32, R(scratch3), Imm8(3)); /* scratch3 = shift */
 
                 ADD(32, R(RSCRATCH2), Imm32(1));
                 SHL(32, R(RSCRATCH2), Imm8(3));
@@ -698,7 +727,7 @@ void VR4300_Jitter::recompile_LWR(struct jit_instr *op)
 
                 MOV(32, R(RSCRATCH2), Imm32(0));
                 TEST(32, R(scratch3), R(scratch3));
-                CMOVcc(64, RSCRATCH2, R(scratch), CC_NZ); // RSCRATCH2 = mask
+                CMOVcc(64, RSCRATCH2, R(scratch), CC_NZ); /* RSCRATCH2 = mask */
 
                 AND(32, Rt, R(RSCRATCH2));
                 address_or_address_reg = RCOpArg::R(RSCRATCH);
@@ -719,24 +748,18 @@ void VR4300_Jitter::recompile_LWR(struct jit_instr *op)
 
             switch_to_far_code();
             info.farcode = GetCodePtr();
+#endif
 
             update_hot_cycles(op);
 
             BitSet32 registers_in_use = caller_saved_registers_in_use();
             ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-            if (!Rb.IsSimpleReg(ABI_PARAM1)) {
-                MOV(64, R(ABI_PARAM1), Rb);
-            }
-            if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
+            MOV_sum(32, ABI_PARAM1, Rb, Imm32((u32)(s16)op->f));
             ABI_CallFunction(read_word_from_dynarec);
             ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
 
             assert(ABI_RETURN != scratch3 && ABI_RETURN != scratch && Rt != ABI_RETURN && ABI_RETURN != RSCRATCH2);
-            if (op->f) {
-                MOV_sum(32, RSCRATCH2, Rb, Imm32((u32)(s16)op->f));
-            } else {
-                MOV(32, R(RSCRATCH2), Rb);
-            }
+            MOV_sum(32, RSCRATCH2, Rb, Imm32((u32)(s16)op->f));
             AND(32, R(RSCRATCH2), Imm32(3)); // n
 
             MOV(32, R(scratch3), Imm32(3));
@@ -765,11 +788,13 @@ void VR4300_Jitter::recompile_LWR(struct jit_instr *op)
             // tlb exception check
             compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
             if (is_in_far_code()) {
                 FixupBranch near_code = J(XEmitter::Jump::Near);
                 switch_to_near_code();
                 SetJumpTarget(near_code);
             }
+#endif
         }
     }
 }
@@ -785,6 +810,7 @@ void VR4300_Jitter::recompile_LDR(struct jit_instr *op)
     if (op->t) {
         u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
         u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
         if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
             RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::ReadWrite);
             RegCache::Realize(Rt);
@@ -806,14 +832,19 @@ void VR4300_Jitter::recompile_LDR(struct jit_instr *op)
             } else {
                 abort();
             }
-        } else {
+        } else
+#endif
+        {
             RCX64Reg Rt = m_gpr.RevertableBind(op->t, RCMode::ReadWrite);
             RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
             RCX64Reg scratch = m_gpr.Scratch(), scratch3 = m_gpr.Scratch();
             RegCache::Realize(Rb, Rt, scratch, scratch3);
 
+#if !DISABLE_FASTMEM
             u8 *code_before = GetWritableCodePtr();
+#endif
 
+#if !DISABLE_FASTMEM
             OpArg memory_location;
             RCOpArg address_or_address_reg;
 
@@ -830,20 +861,16 @@ void VR4300_Jitter::recompile_LDR(struct jit_instr *op)
 
                 memory_location = MDisp(RDRAM, address & ~7);
             } else {
-                if (op->f) {
-                    MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-                } else {
-                    MOV(32, R(RSCRATCH), Rb);
-                }
+                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
                 MOV(32, R(scratch), R(RSCRATCH));
                 MOV(32, R(RSCRATCH2), R(RSCRATCH));
                 AND(32, R(RSCRATCH), Imm32(~UINT32_C(7)));
 
-                AND(32, R(RSCRATCH2), Imm32(7)); // n
+                AND(32, R(RSCRATCH2), Imm32(7)); /* n */
 
                 MOV(32, R(scratch3), Imm32(7));
                 SUB(32, R(scratch3), R(RSCRATCH2));
-                SHL(32, R(scratch3), Imm8(3)); // scratch3 = shift
+                SHL(32, R(scratch3), Imm8(3)); /* scratch3 = shift */
 
                 ADD(32, R(RSCRATCH2), Imm32(1));
                 SHL(32, R(RSCRATCH2), Imm8(3));
@@ -855,7 +882,7 @@ void VR4300_Jitter::recompile_LDR(struct jit_instr *op)
 
                 MOV(32, R(RSCRATCH2), Imm32(0));
                 TEST(32, R(scratch3), R(scratch3));
-                CMOVcc(64, RSCRATCH2, R(scratch), CC_NZ); // RSCRATCH2 = mas
+                CMOVcc(64, RSCRATCH2, R(scratch), CC_NZ); /* RSCRATCH2 = mas */
 
                 AND(64, Rt, R(RSCRATCH2));
 
@@ -877,25 +904,18 @@ void VR4300_Jitter::recompile_LDR(struct jit_instr *op)
 
             switch_to_far_code();
             info.farcode = GetCodePtr();
-
+#endif
             update_hot_cycles(op);
 
             BitSet32 registers_in_use = caller_saved_registers_in_use();
             ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-            if (!Rb.IsSimpleReg(ABI_PARAM1)) {
-                MOV(64, R(ABI_PARAM1), Rb);
-            }
-            if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
+            MOV_sum(32, ABI_PARAM1, Rb, Imm32((u32)(s16)op->f));
             AND(32, R(ABI_PARAM1), Imm32(~UINT32_C(7)));
             ABI_CallFunction(read_dword_from_dynarec);
             ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
 
             assert(ABI_RETURN != scratch3 && ABI_RETURN != scratch && Rt != ABI_RETURN && ABI_RETURN != RSCRATCH2);
-            if (op->f) {
-                MOV_sum(32, RSCRATCH2, Rb, Imm32((u32)(s16)op->f));
-            } else {
-                MOV(32, R(RSCRATCH2), Rb);
-            }
+            MOV_sum(32, RSCRATCH2, Rb, Imm32((u32)(s16)op->f));
             AND(32, R(RSCRATCH2), Imm32(7)); // n
 
             MOV(32, R(scratch3), Imm32(7));
@@ -923,11 +943,13 @@ void VR4300_Jitter::recompile_LDR(struct jit_instr *op)
             // tlb exception check
             compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
             if (is_in_far_code()) {
                 FixupBranch near_code = J(XEmitter::Jump::Near);
                 switch_to_near_code();
                 SetJumpTarget(near_code);
             }
+#endif
         }
     }
 }
@@ -943,6 +965,7 @@ void VR4300_Jitter::recompile_LH(struct jit_instr *op, bool unsigned_lh)
     if (op->t) {
         u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
         u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
         if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
             RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::Write);
 
@@ -958,11 +981,14 @@ void VR4300_Jitter::recompile_LH(struct jit_instr *op, bool unsigned_lh)
             } else {
                 abort();
             }
-        } else {
+        } else
+#endif
+        {
             RCX64Reg Rt = m_gpr.RevertableBind(op->t, RCMode::Write);
             RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
             RegCache::Realize(Rb, Rt);
 
+#if !DISABLE_FASTMEM
             u8 *code_before = GetWritableCodePtr();
 
             OpArg memory_location;
@@ -972,11 +998,7 @@ void VR4300_Jitter::recompile_LH(struct jit_instr *op, bool unsigned_lh)
                 address_or_address_reg = RCOpArg::Imm64(address ^ 2);
                 memory_location = MDisp(RDRAM, address ^ 2);
             } else {
-                if (op->f) {
-                    MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-                } else {
-                    MOV(32, R(RSCRATCH), Rb);
-                }
+                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
                 XOR(32, R(RSCRATCH), Imm32(2));
 
                 address_or_address_reg = RCOpArg::R(RSCRATCH);
@@ -997,15 +1019,12 @@ void VR4300_Jitter::recompile_LH(struct jit_instr *op, bool unsigned_lh)
 
             switch_to_far_code();
             info.farcode = GetCodePtr();
-
+#endif
             update_hot_cycles(op);
 
             BitSet32 registers_in_use = caller_saved_registers_in_use();
             ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-            if (!Rb.IsSimpleReg(ABI_PARAM1)) {
-                MOV(64, R(ABI_PARAM1), Rb);
-            }
-            if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
+            MOV_sum(32, ABI_PARAM1, Rb, Imm32((u32)(s16)op->f));
             ABI_CallFunction(read_hword_from_dynarec);
             ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
 
@@ -1020,11 +1039,13 @@ void VR4300_Jitter::recompile_LH(struct jit_instr *op, bool unsigned_lh)
             // tlb exception check
             compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
             if (is_in_far_code()) {
                 FixupBranch near_code = J(XEmitter::Jump::Near);
                 switch_to_near_code();
                 SetJumpTarget(near_code);
             }
+#endif
         }
     }
 }
@@ -1045,6 +1066,7 @@ void VR4300_Jitter::recompile_LD(struct jit_instr *op)
     if (op->t) {
         u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
         u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
         if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
             RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::Write);
             RegCache::Realize(Rt);
@@ -1056,11 +1078,14 @@ void VR4300_Jitter::recompile_LD(struct jit_instr *op)
             } else {
                 abort();
             }
-        } else {
+        } else
+#endif
+        {
             RCX64Reg Rt = m_gpr.RevertableBind(op->t, RCMode::Write);
             RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
             RegCache::Realize(Rb, Rt);
 
+#if !DISABLE_FASTMEM
             u8 *code_before = GetWritableCodePtr();
 
             OpArg memory_location;
@@ -1070,11 +1095,7 @@ void VR4300_Jitter::recompile_LD(struct jit_instr *op)
                 address_or_address_reg = RCOpArg::Imm64(address & ~3);
                 memory_location = MDisp(RDRAM, address & ~3);
             } else {
-                if (op->f) {
-                    MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-                } else {
-                    MOV(32, R(RSCRATCH), Rb);
-                }
+                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
                 AND(32, R(RSCRATCH), Imm32(~3));
 
                 address_or_address_reg = RCOpArg::R(RSCRATCH);
@@ -1092,15 +1113,12 @@ void VR4300_Jitter::recompile_LD(struct jit_instr *op)
 
             switch_to_far_code();
             info.farcode = GetCodePtr();
-
+#endif
             update_hot_cycles(op);
 
             BitSet32 registers_in_use = caller_saved_registers_in_use();
             ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-            if (!Rb.IsSimpleReg(ABI_PARAM1)) {
-                MOV(64, R(ABI_PARAM1), Rb);
-            }
-            if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
+            MOV_sum(32, ABI_PARAM1, Rb, Imm32((u32)(s16)op->f));
             ABI_CallFunction(read_dword_from_dynarec);
             ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
             MOV(64, Rt, R(ABI_RETURN));
@@ -1110,11 +1128,13 @@ void VR4300_Jitter::recompile_LD(struct jit_instr *op)
             // tlb exception check
             compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
             if (is_in_far_code()) {
                 FixupBranch near_code = J(XEmitter::Jump::Near);
                 switch_to_near_code();
                 SetJumpTarget(near_code);
             }
+#endif
         }
     }
 }
@@ -1130,6 +1150,7 @@ void VR4300_Jitter::recompile_LB(struct jit_instr *op, bool unsigned_lb)
     if (op->t) {
         u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
         u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
         if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
             RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::Write);
             RegCache::Realize(Rt);
@@ -1144,11 +1165,14 @@ void VR4300_Jitter::recompile_LB(struct jit_instr *op, bool unsigned_lb)
            } else {
                 abort();
            }
-        } else {
+        } else
+#endif
+        {
             RCX64Reg Rt = m_gpr.RevertableBind(op->t, RCMode::Write);
             RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
             RegCache::Realize(Rb, Rt);
 
+#if !DISABLE_FASTMEM
             u8 *code_before = GetWritableCodePtr();
 
             OpArg memory_location;
@@ -1158,11 +1182,7 @@ void VR4300_Jitter::recompile_LB(struct jit_instr *op, bool unsigned_lb)
                 address_or_address_reg = RCOpArg::Imm64(address ^ 3);
                 memory_location = MDisp(RDRAM, address ^ 3);
             } else {
-                if (op->f) {
-                    MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-                } else {
-                    MOV(32, R(RSCRATCH), Rb);
-                }
+                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
                 XOR(32, R(RSCRATCH), Imm32(3));
 
                 address_or_address_reg = RCOpArg::R(RSCRATCH);
@@ -1183,15 +1203,13 @@ void VR4300_Jitter::recompile_LB(struct jit_instr *op, bool unsigned_lb)
 
             switch_to_far_code();
             info.farcode = GetCodePtr();
+#endif
 
             update_hot_cycles(op);
 
             BitSet32 registers_in_use = caller_saved_registers_in_use();
             ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-            if (!Rb.IsSimpleReg(ABI_PARAM1)) {
-                MOV(64, R(ABI_PARAM1), Rb);
-            }
-            if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
+            MOV_sum(32, ABI_PARAM1, Rb, Imm32((u32)(s16)op->f));
             ABI_CallFunction(read_byte_unsigned_from_dynarec);
             ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
 
@@ -1206,11 +1224,13 @@ void VR4300_Jitter::recompile_LB(struct jit_instr *op, bool unsigned_lb)
             // tlb exception check
             compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
             if (is_in_far_code()) {
                 FixupBranch near_code = J(XEmitter::Jump::Near);
                 switch_to_near_code();
                 SetJumpTarget(near_code);
             }
+#endif
         }
     }
 }
@@ -1230,6 +1250,7 @@ void VR4300_Jitter::recompile_SW(struct jit_instr *op)
 
     u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
     u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
     if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && (vr4300_jitter_is_rdram_address(address) || (vr4300_jitter_is_mi_regs_address(address)))))) {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RegCache::Realize(Rt);
@@ -1265,7 +1286,7 @@ void VR4300_Jitter::recompile_SW(struct jit_instr *op)
 
             BitSet32 registers_in_use = caller_saved_registers_in_use();
             ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-            MOV(64, R(ABI_PARAM1), ImmPtr(g_dev.r4300.mi));
+            MOV(64, R(ABI_PARAM1), ImmPtr(m_r4300->mi));
             MOV(64, R(ABI_PARAM2), Imm32(address & ~3));
             MOV(64, R(ABI_PARAM3), Rt);
             MOV(64, R(ABI_PARAM4), Imm32(0xffffffff));
@@ -1274,12 +1295,15 @@ void VR4300_Jitter::recompile_SW(struct jit_instr *op)
         } else {
             abort();
         }
-    } else {
+    } else
+#endif
+    {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
         RCX64Reg scratch = m_gpr.Scratch();
         RegCache::Realize(Rb, Rt, scratch);
 
+#if !DISABLE_FASTMEM
         u8 *code_before = GetWritableCodePtr();
 
         OpArg memory_location;
@@ -1289,11 +1313,7 @@ void VR4300_Jitter::recompile_SW(struct jit_instr *op)
             address_or_address_reg = RCOpArg::Imm64(address & ~3);
             memory_location = MDisp(RDRAM, address & ~3);
         } else {
-            if (op->f) {
-                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-            } else {
-                MOV(32, R(RSCRATCH), Rb);
-            }
+            MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
             AND(32, R(RSCRATCH), Imm32(~3));
             address_or_address_reg = RCOpArg::R(RSCRATCH);
             memory_location = MRegSum(RDRAM, RSCRATCH);
@@ -1323,6 +1343,7 @@ void VR4300_Jitter::recompile_SW(struct jit_instr *op)
 
         switch_to_far_code();
         info.farcode = GetCodePtr();
+#endif
         update_hot_cycles(op);
 
         BitSet32 registers_in_use = caller_saved_registers_in_use();
@@ -1337,11 +1358,13 @@ void VR4300_Jitter::recompile_SW(struct jit_instr *op)
         // tlb exception check
         compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
         if (is_in_far_code()) {
             FixupBranch near_code = J(XEmitter::Jump::Near);
             switch_to_near_code();
             SetJumpTarget(near_code);
         }
+#endif
     }
 }
 
@@ -1358,11 +1381,12 @@ void VR4300_Jitter::recompile_SC(struct jit_instr *op)
         RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::ReadWrite);
         RegCache::Realize(Rt);
 
-        MOV(32, HOTSTATE_VAR(llbit), Imm32(0));
+        CMP(32, HOTSTATE_VAR(llbit), Imm32(0));
         FixupBranch llbit_not_set = J_CC(CC_E, XEmitter::Jump::Near);
 
         u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
         u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
         if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
             if (vr4300_jitter_is_rdram_address(address)) {
                 MOV(32, MDisp(RDRAM, vr4300_jitter_rdram_dram_address(address & ~3)), Rt);
@@ -1374,11 +1398,14 @@ void VR4300_Jitter::recompile_SC(struct jit_instr *op)
             } else {
                 abort();
             }
-        } else {
+        } else
+#endif
+        {
             RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
             RCX64Reg scratch = m_gpr.Scratch();
             RegCache::Realize(Rb, Rt, scratch);
 
+#if !DISABLE_FASTMEM
             u8 *code_before = GetWritableCodePtr();
 
             OpArg memory_location;
@@ -1388,11 +1415,7 @@ void VR4300_Jitter::recompile_SC(struct jit_instr *op)
                 address_or_address_reg = RCOpArg::Imm64(address & ~3);
                 memory_location = MDisp(RDRAM, address & ~3);
             } else {
-                if (op->f) {
-                    MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-                } else {
-                    MOV(32, R(RSCRATCH), Rb);
-                }
+                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
                 AND(32, R(RSCRATCH), Imm32(~3));
                 address_or_address_reg = RCOpArg::R(RSCRATCH);
                 memory_location = MRegSum(RDRAM, RSCRATCH);
@@ -1413,6 +1436,7 @@ void VR4300_Jitter::recompile_SC(struct jit_instr *op)
             info.read = false;
             switch_to_far_code();
             info.farcode = GetCodePtr();
+#endif
 
             update_hot_cycles(op);
 
@@ -1442,11 +1466,13 @@ void VR4300_Jitter::recompile_SC(struct jit_instr *op)
         // tlb exception check
         compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
         if (is_in_far_code()) {
             FixupBranch near_code = J(XEmitter::Jump::Near);
             switch_to_near_code();
             SetJumpTarget(near_code);
         }
+#endif
     }
 }
 
@@ -1460,6 +1486,7 @@ void VR4300_Jitter::recompile_SWL(struct jit_instr *op)
 
     u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
     u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
     if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RegCache::Realize(Rt);
@@ -1500,21 +1527,28 @@ void VR4300_Jitter::recompile_SWL(struct jit_instr *op)
         } else {
             abort();
         }
-    } else {
+    } else
+#endif
+    {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
+        RegCache::Realize(Rb, Rt);
+#if !DISABLE_FASTMEM
         RCX64Reg scratch = m_gpr.Scratch();
         RCX64Reg scratch3 = m_gpr.Scratch();
         RCX64Reg scratchinval = m_gpr.Scratch();
-        RegCache::Realize(Rb, Rt, scratch, scratch3, scratchinval);
+        RegCache::Realize(scratch, scratch3, scratchinval);
 
         u8 *code_before = GetWritableCodePtr();
+#endif
 
+#if !DISABLE_FASTMEM
         OpArg memory_location;
         RCOpArg address_or_address_reg;
 
         if (m_gpr.IsImm(op->b)) {
             address_or_address_reg = RCOpArg::Imm64(address & ~3);
+
             unsigned int n = (address & 3);
             unsigned int shift = 8 * n;
             uint32_t mask = (n == 0)
@@ -1526,14 +1560,10 @@ void VR4300_Jitter::recompile_SWL(struct jit_instr *op)
 
             memory_location = MDisp(RDRAM, address & ~3);
         } else {
-            if (op->f) {
-                MOV_sum(32, scratch3, Rb, Imm32((u32)(s16)op->f));
-            } else {
-                MOV(32, R(scratch3), Rb);
-            }
+            MOV_sum(32, scratch3, Rb, Imm32((u32)(s16)op->f));
             MOV(32, R(RSCRATCH), R(scratch3));
             AND(32, R(RSCRATCH), Imm32(~UINT32_C(3)));
-            AND(32, R(scratch3), Imm32(UINT32_C(3))); // n
+            AND(32, R(scratch3), Imm32(UINT32_C(3))); /* n */
 
             MOV(32, R(RSCRATCH2), Imm32(4));
             SUB(32, R(RSCRATCH2), R(scratch3));
@@ -1545,9 +1575,9 @@ void VR4300_Jitter::recompile_SWL(struct jit_instr *op)
 
             MOV(32, R(RSCRATCH2), Imm32(0xffffffff));
             TEST(32, R(scratch3), R(scratch3));
-            CMOVcc(64, RSCRATCH2, R(scratch), CC_NZ); // RSCRATCH2 = mask
+            CMOVcc(64, RSCRATCH2, R(scratch), CC_NZ); /* RSCRATCH2 = mask */
 
-            SHL(32, R(scratch3), Imm8(3)); // R(scratch3) = shift
+            SHL(32, R(scratch3), Imm8(3)); /* R(scratch3) = shift */
 
             address_or_address_reg = RCOpArg::R(RSCRATCH);
             memory_location = MRegSum(RDRAM, RSCRATCH);
@@ -1577,22 +1607,15 @@ void VR4300_Jitter::recompile_SWL(struct jit_instr *op)
 
         switch_to_far_code();
         info.farcode = GetCodePtr();
+#endif
 
         update_hot_cycles(op);
 
         BitSet32 registers_in_use = caller_saved_registers_in_use();
         ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-        if (scratch3 == ABI_PARAM1 || scratch3 == ABI_PARAM2 || scratch3 == ABI_PARAM3) {
-            MOV(64, R(ABI_PARAM4), scratch3);
-        }
-        mov_3(32, ABI_PARAM1, ABI_PARAM2, ABI_PARAM3, Rb, Rt, RCOpArg::R(RSCRATCH2));
+        mov_2(32, ABI_PARAM1, 32, ABI_PARAM2, Rb, Rt);
         if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
-        if (scratch3 == ABI_PARAM1 || scratch3 == ABI_PARAM2 || scratch3 == ABI_PARAM3) {
-            SHRX(64, ABI_PARAM2, R(ABI_PARAM2), ABI_PARAM4);
-        } else {
-            SHRX(64, ABI_PARAM2, R(ABI_PARAM2), scratch3);
-        }
-        ABI_CallFunction(write_word_from_dynarec_with_mask);
+        ABI_CallFunction(write_word_from_dynarec_SWL);
         ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
     }
 
@@ -1600,11 +1623,13 @@ void VR4300_Jitter::recompile_SWL(struct jit_instr *op)
         // tlb exception check
         compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
         if (is_in_far_code()) {
             FixupBranch near_code = J(XEmitter::Jump::Near);
             switch_to_near_code();
             SetJumpTarget(near_code);
         }
+#endif
     }
 }
 
@@ -1618,6 +1643,7 @@ void VR4300_Jitter::recompile_SDL(struct jit_instr *op)
 
     u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
     u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
     if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RegCache::Realize(Rt);
@@ -1669,27 +1695,31 @@ void VR4300_Jitter::recompile_SDL(struct jit_instr *op)
 
             exception_check = false;
         } else {
-            update_hot_cycles(op);
-
-            BitSet32 registers_in_use = caller_saved_registers_in_use();
-            ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-            mov_3(64, ABI_PARAM1, ABI_PARAM2, ABI_PARAM3, RCOpArg::Imm64(address & ~UINT32_C(7)), Rt, RCOpArg::Imm64(mask));
-            SHR(64, R(ABI_PARAM2), Imm8(shift));
-            ABI_CallFunction(write_word_from_dynarec_with_mask);
-            ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
+            abort();
         }
-    } else {
+    } else
+#endif
+    {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
+        RegCache::Realize(Rb, Rt);
+
+#if !DISABLE_FASTMEM
         RCX64Reg scratch = m_gpr.Scratch();
         RCX64Reg scratch3 = m_gpr.Scratch();
         RCX64Reg scratchinval = m_gpr.Scratch();
-        RegCache::Realize(Rb, Rt, scratch, scratch3, scratchinval);
+        RegCache::Realize(scratch, scratch3, scratchinval);
+#endif
 
+#if !DISABLE_FASTMEM
         u8 *code_before = GetWritableCodePtr();
+#endif
 
+
+#if !DISABLE_FASTMEM
         OpArg memory_location;
         RCOpArg address_or_address_reg;
+
         if (m_gpr.IsImm(op->b)) {
             address_or_address_reg = RCOpArg::Imm64(address & ~3);
             unsigned int n = (address & 7);
@@ -1703,19 +1733,10 @@ void VR4300_Jitter::recompile_SDL(struct jit_instr *op)
 
             memory_location = MDisp(RDRAM, address & ~7);
         } else {
-            unsigned int n = (address & 7);
-            unsigned int shift = 8 * n;
-            uint64_t mask = (n == 0)
-                ? ~UINT64_C(0)
-                : BITS_BELOW_MASK64(8 * (8 - n));
-            if (op->f) {
-                MOV_sum(32, scratch3, Rb, Imm32((u32)(s16)op->f));
-            } else {
-                MOV(32, R(scratch3), Rb);
-            }
+            MOV_sum(32, scratch3, Rb, Imm32((u32)(s16)op->f));
             MOV(32, R(RSCRATCH), R(scratch3));
             AND(32, R(RSCRATCH), Imm32(~UINT32_C(7)));
-            AND(32, R(scratch3), Imm32(UINT32_C(7))); // n
+            AND(32, R(scratch3), Imm32(UINT32_C(7))); /* n */
 
             MOV(32, R(RSCRATCH2), Imm32(8));
             SUB(64, R(RSCRATCH2), R(scratch3));
@@ -1727,9 +1748,9 @@ void VR4300_Jitter::recompile_SDL(struct jit_instr *op)
 
             MOV(64, R(RSCRATCH2), Imm64(0xffffffffffffffff));
             TEST(64, R(scratch3), R(scratch3));
-            CMOVcc(64, RSCRATCH2, R(scratch), CC_NZ); // RSCRATCH2 = mask
+            CMOVcc(64, RSCRATCH2, R(scratch), CC_NZ); /* RSCRATCH2 = mask */
 
-            SHL(64, R(scratch3), Imm8(3)); // R(scratch3) = shift
+            SHL(64, R(scratch3), Imm8(3)); /* R(scratch3) = shift */
 
             address_or_address_reg = RCOpArg::R(RSCRATCH);
             memory_location = MRegSum(RDRAM, RSCRATCH);
@@ -1761,23 +1782,15 @@ void VR4300_Jitter::recompile_SDL(struct jit_instr *op)
 
         switch_to_far_code();
         info.farcode = GetCodePtr();
+#endif
 
         update_hot_cycles(op);
 
         BitSet32 registers_in_use = caller_saved_registers_in_use();
         ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-        if (scratch3 == ABI_PARAM1 || scratch3 == ABI_PARAM2 || scratch3 == ABI_PARAM3) {
-            MOV(64, R(ABI_PARAM4), scratch3);
-        }
-        mov_3(64, ABI_PARAM1, ABI_PARAM2, ABI_PARAM3, Rb, Rt, RCOpArg::R(RSCRATCH2));
+        mov_2(64, ABI_PARAM1, 64, ABI_PARAM2, Rb, Rt);
         if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
-        AND(32, R(ABI_PARAM1), Imm32(~UINT32_C(7)));
-        if (scratch3 == ABI_PARAM1 || scratch3 == ABI_PARAM2 || scratch3 == ABI_PARAM3) {
-            SHRX(64, ABI_PARAM2, R(ABI_PARAM2), ABI_PARAM4);
-        } else {
-            SHRX(64, ABI_PARAM2, R(ABI_PARAM2), scratch3);
-        }
-        ABI_CallFunction(write_word_from_dynarec_with_mask);
+        ABI_CallFunction(write_dword_from_dynarec_SDL);
         ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
     }
 
@@ -1785,11 +1798,13 @@ void VR4300_Jitter::recompile_SDL(struct jit_instr *op)
         // tlb exception check
         compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
         if (is_in_far_code()) {
             FixupBranch near_code = J(XEmitter::Jump::Near);
             switch_to_near_code();
             SetJumpTarget(near_code);
         }
+#endif
     }
 }
 
@@ -1803,6 +1818,7 @@ void VR4300_Jitter::recompile_SDR(struct jit_instr *op)
 
     u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
     u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
     if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RegCache::Realize(Rt);
@@ -1846,46 +1862,52 @@ void VR4300_Jitter::recompile_SDR(struct jit_instr *op)
         } else {
             abort();
         }
-    } else {
+    } else
+#endif
+    {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
+        RegCache::Realize(Rb, Rt);
+#if !DISABLE_FASTMEM
         RCX64Reg scratch = m_gpr.Scratch();
         RCX64Reg scratch3 = m_gpr.Scratch();
         RCX64Reg scratchinval = m_gpr.Scratch();
-        RegCache::Realize(Rb, Rt, scratch, scratch3, scratchinval);
+        RegCache::Realize(scratch, scratch3, scratchinval);
+#endif
 
+#if !DISABLE_FASTMEM
         u8 *code_before = GetWritableCodePtr();
+#endif
 
+#if !DISABLE_FASTMEM
         OpArg memory_location;
         RCOpArg address_or_address_reg;
+
         if (m_gpr.IsImm(op->b)) {
             address_or_address_reg = RCOpArg::Imm64(address & ~7);
+
             unsigned int n = (address & 7);
             unsigned int shift = 8 * (7 - n);
             uint64_t mask = BITS_ABOVE_MASK64(8 * (7 - n));
 
-            MOV(32, R(RSCRATCH2), Imm32(shift));
             MOV(32, R(scratch), Imm32(mask));
+            MOV(32, R(RSCRATCH2), Imm32(shift));
 
             memory_location = MDisp(RDRAM, address & ~7);
         } else {
-            if (op->f) {
-                MOV_sum(32, scratch3, Rb, Imm32((u32)(s16)op->f));
-            } else {
-                MOV(32, R(scratch3), Rb);
-            }
+            MOV_sum(32, scratch3, Rb, Imm32((u32)(s16)op->f));
             MOV(32, R(RSCRATCH), R(scratch3));
             AND(32, R(RSCRATCH), Imm32(~UINT32_C(7)));
-            AND(32, R(scratch3), Imm32(UINT32_C(7))); // n
+            AND(32, R(scratch3), Imm32(UINT32_C(7))); /* n */
 
             MOV(32, R(RSCRATCH2), Imm32(7));
             SUB(64, R(RSCRATCH2), R(scratch3));
-            SHL(64, R(RSCRATCH2), Imm8(3)); // RSCRATCH2 = 8 * (7 - n) == shift
+            SHL(64, R(RSCRATCH2), Imm8(3)); /* RSCRATCH2 = 8 * (7 - n) == shift */
 
             MOV(32, R(scratch), Imm32(1));
             SHLX(64, scratch, R(scratch), RSCRATCH2);
             SUB(64, R(scratch), Imm32(1));
-            NOT(64, R(scratch)); // scratch = BITS_ABOVE_MASK64(8 * (7 - n)) == mask
+            NOT(64, R(scratch)); /* scratch = BITS_ABOVE_MASK64(8 * (7 - n)) == mask */
 
             address_or_address_reg = RCOpArg::R(RSCRATCH);
             memory_location = MRegSum(RDRAM, RSCRATCH);
@@ -1918,23 +1940,14 @@ void VR4300_Jitter::recompile_SDR(struct jit_instr *op)
 
         switch_to_far_code();
         info.farcode = GetCodePtr();
-
+#endif
         update_hot_cycles(op);
 
         BitSet32 registers_in_use = caller_saved_registers_in_use();
         ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-        if (RSCRATCH2 == ABI_PARAM1 || RSCRATCH2 == ABI_PARAM2 || RSCRATCH2 == ABI_PARAM3) {
-            MOV(64, R(ABI_PARAM4), R(RSCRATCH2));
-        }
-        mov_3(64, ABI_PARAM1, ABI_PARAM2, ABI_PARAM3, Rb, Rt, RCOpArg::R(scratch));
+        mov_2(64, ABI_PARAM1, 64, ABI_PARAM3, Rb, Rt);
         if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
-        AND(32, R(ABI_PARAM1), Imm32(~UINT32_C(7)));
-        if (RSCRATCH2 == ABI_PARAM1 || RSCRATCH2 == ABI_PARAM2 || RSCRATCH2 == ABI_PARAM3) {
-            SHLX(64, ABI_PARAM2, R(ABI_PARAM2), ABI_PARAM4);
-        } else {
-            SHLX(64, ABI_PARAM2, R(ABI_PARAM2), RSCRATCH2);
-        }
-        ABI_CallFunction(write_word_from_dynarec_with_mask);
+        ABI_CallFunction(write_dword_from_dynarec_SDR);
         ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
     }
 
@@ -1942,11 +1955,13 @@ void VR4300_Jitter::recompile_SDR(struct jit_instr *op)
         // tlb exception check
         compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
         if (is_in_far_code()) {
             FixupBranch near_code = J(XEmitter::Jump::Near);
             switch_to_near_code();
             SetJumpTarget(near_code);
         }
+#endif
     }
 }
 
@@ -1960,6 +1975,7 @@ void VR4300_Jitter::recompile_SWR(struct jit_instr *op)
 
     u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
     u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
     if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RegCache::Realize(Rt);
@@ -1999,43 +2015,53 @@ void VR4300_Jitter::recompile_SWR(struct jit_instr *op)
         } else {
             abort();
         }
-    } else {
+    } else
+#endif
+    {
+#if !DISABLE_FASTMEM
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
         RCX64Reg scratch = m_gpr.Scratch(), scratch3 = m_gpr.Scratch();
         RCX64Reg scratchinval = m_gpr.Scratch();
         RegCache::Realize(Rb, Rt, scratch, scratch3, scratchinval);
+#else
+        RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
+        RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
+        RegCache::Realize(Rb, Rt);
+#endif
 
+#if !DISABLE_FASTMEM
         u8 *code_before = GetWritableCodePtr();
+#endif
 
+#if !DISABLE_FASTMEM
         OpArg memory_location;
         RCOpArg address_or_address_reg;
+
         if (m_gpr.IsImm(op->b)) {
             address_or_address_reg = RCOpArg::Imm64(address & ~3);
+
             unsigned int n = (address & 3);
             unsigned int shift = 8 * (3 - n);
             uint32_t mask = BITS_ABOVE_MASK32(8 * (3 - n));
 
-            MOV(32, R(scratch), Imm32(mask));
             MOV(32, R(scratch3), Imm32(shift));
+            MOV(32, R(scratch), Imm32(mask));
+
             memory_location = MDisp(RDRAM, address & ~3);
         } else {
-            if (op->f) {
-                MOV_sum(32, RSCRATCH2, Rb, Imm32((u32)(s16)op->f));
-            } else {
-                MOV(32, R(RSCRATCH2), Rb);
-            }
+            MOV_sum(32, RSCRATCH2, Rb, Imm32((u32)(s16)op->f));
             MOV(32, R(RSCRATCH), R(RSCRATCH2));
 
-            AND(32, R(RSCRATCH2), Imm32(UINT32_C(3))); // n
+            AND(32, R(RSCRATCH2), Imm32(UINT32_C(3))); /* n */
             MOV(32, R(scratch3), Imm32(3));
             SUB(32, R(scratch3), R(RSCRATCH2));
-            SHL(32, R(scratch3), Imm8(3)); // scratch3 == shift
+            SHL(32, R(scratch3), Imm8(3)); /* scratch3 == shift */
 
             MOV(32, R(scratch), Imm32(1));
             SHLX(32, scratch, R(scratch), scratch3);
             SUB(32, R(scratch), Imm32(1));
-            NOT(32, R(scratch)); // scratch == mask
+            NOT(32, R(scratch)); /* scratch == mask */
 
             AND(32, R(RSCRATCH), Imm32(~3));
 
@@ -2067,22 +2093,15 @@ void VR4300_Jitter::recompile_SWR(struct jit_instr *op)
 
         switch_to_far_code();
         info.farcode = GetCodePtr();
+#endif
 
         update_hot_cycles(op);
 
         BitSet32 registers_in_use = caller_saved_registers_in_use();
         ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
-        if (scratch3 == ABI_PARAM1 || scratch3 == ABI_PARAM2 || scratch3 == ABI_PARAM3) {
-            MOV(64, R(ABI_PARAM4), scratch3);
-        }
-        mov_3(32, ABI_PARAM1, ABI_PARAM2, ABI_PARAM3, Rb, Rt, RCOpArg::R(scratch));
+        mov_2(64, ABI_PARAM1, 32, ABI_PARAM2, Rb, Rt);
         if (op->f) ADD(32, R(ABI_PARAM1), Imm32((u32)(s16)op->f));
-        if (scratch3 == ABI_PARAM1 || scratch3 == ABI_PARAM2 || scratch3 == ABI_PARAM3) {
-            SHLX(64, ABI_PARAM2, R(ABI_PARAM2), ABI_PARAM4);
-        } else {
-            SHLX(64, ABI_PARAM2, R(ABI_PARAM2), scratch3);
-        }
-        ABI_CallFunction(write_word_from_dynarec_with_mask);
+        ABI_CallFunction(write_word_from_dynarec_SWR);
         ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
     }
 
@@ -2090,11 +2109,13 @@ void VR4300_Jitter::recompile_SWR(struct jit_instr *op)
         // tlb exception check
         compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
         if (is_in_far_code()) {
             FixupBranch near_code = J(XEmitter::Jump::Near);
             switch_to_near_code();
             SetJumpTarget(near_code);
         }
+#endif
     }
 }
 
@@ -2170,6 +2191,7 @@ void VR4300_Jitter::recompile_SB(struct jit_instr *op)
 
     u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
     u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
     if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RegCache::Realize(Rt);
@@ -2190,12 +2212,15 @@ void VR4300_Jitter::recompile_SB(struct jit_instr *op)
         } else {
             abort();
         }
-    } else {
+    } else
+#endif
+    {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
         RCX64Reg scratchinval = m_gpr.Scratch();
         RegCache::Realize(Rb, Rt, scratchinval);
 
+#if !DISABLE_FASTMEM
         u8 *code_before = GetWritableCodePtr();
 
         OpArg memory_location;
@@ -2205,11 +2230,7 @@ void VR4300_Jitter::recompile_SB(struct jit_instr *op)
             address_or_address_reg = RCOpArg::Imm64(address ^ 3);
             memory_location = MDisp(RDRAM, address ^ 3);
         } else {
-            if (op->f) {
-                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-            } else {
-                MOV(32, R(RSCRATCH), Rb);
-            }
+            MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
             XOR(8, R(RSCRATCH), Imm8(3));
 
             address_or_address_reg = RCOpArg::R(RSCRATCH);
@@ -2237,7 +2258,7 @@ void VR4300_Jitter::recompile_SB(struct jit_instr *op)
 
         switch_to_far_code();
         info.farcode = GetCodePtr();
-
+#endif
         update_hot_cycles(op);
 
         BitSet32 registers_in_use = caller_saved_registers_in_use();
@@ -2252,11 +2273,13 @@ void VR4300_Jitter::recompile_SB(struct jit_instr *op)
         // tlb exception check
         compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
         if (is_in_far_code()) {
             FixupBranch near_code = J(XEmitter::Jump::Near);
             switch_to_near_code();
             SetJumpTarget(near_code);
         }
+#endif
     }
 }
 
@@ -2270,6 +2293,7 @@ void VR4300_Jitter::recompile_SH(struct jit_instr *op)
 
     u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
     u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
     if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RegCache::Realize(Rt);
@@ -2290,12 +2314,15 @@ void VR4300_Jitter::recompile_SH(struct jit_instr *op)
         } else {
             abort();
         }
-    } else {
+    } else
+#endif
+    {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
         RCX64Reg scratchinval = m_gpr.Scratch();
         RegCache::Realize(Rb, Rt, scratchinval);
 
+#if !DISABLE_FASTMEM
         u8 *code_before = GetWritableCodePtr();
 
         OpArg memory_location;
@@ -2305,12 +2332,7 @@ void VR4300_Jitter::recompile_SH(struct jit_instr *op)
             address_or_address_reg = RCOpArg::Imm64(address ^ 2);
             memory_location = MDisp(RDRAM, address ^ 2);
         } else {
-            if (op->f) {
-                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-            } else {
-                MOV(32, R(RSCRATCH), Rb);
-            }
-
+            MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
             XOR(32, R(RSCRATCH), Imm8(2));
             address_or_address_reg = RCOpArg::R(RSCRATCH);
             memory_location = MRegSum(RDRAM, RSCRATCH);
@@ -2338,6 +2360,7 @@ void VR4300_Jitter::recompile_SH(struct jit_instr *op)
 
         switch_to_far_code();
         info.farcode = GetCodePtr();
+#endif
 
         update_hot_cycles(op);
 
@@ -2353,11 +2376,13 @@ void VR4300_Jitter::recompile_SH(struct jit_instr *op)
         // tlb exception check
         compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
         if (is_in_far_code()) {
             FixupBranch near_code = J(XEmitter::Jump::Near);
             switch_to_near_code();
             SetJumpTarget(near_code);
         }
+#endif
     }
 }
 
@@ -2371,6 +2396,7 @@ void VR4300_Jitter::recompile_SD(struct jit_instr *op)
 
     u32 base = op->b ? (m_gpr.IsImm(op->b) ? m_gpr.Imm64(op->b) : 0) : 0;
     u32 address = base + (u32)(s16)op->f;
+#if !DISABLE_RDRAM_OPTIMIZATION
     if (!HOT_STATE->rdram_generate_slowcode && (!op->b || (m_gpr.IsImm(op->b) && vr4300_jitter_is_rdram_address(address)))) {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RegCache::Realize(Rt);
@@ -2386,11 +2412,14 @@ void VR4300_Jitter::recompile_SD(struct jit_instr *op)
         } else {
             abort();
         }
-    } else {
+    } else
+#endif
+    {
         RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RCOpArg Rb = op->b ? m_gpr.Use(op->b, RCMode::Read) : RCOpArg::Imm64(0);
         RegCache::Realize(Rb, Rt);
 
+#if !DISABLE_FASTMEM
         u8 *code_before = GetWritableCodePtr();
 
         OpArg memory_location;
@@ -2400,11 +2429,7 @@ void VR4300_Jitter::recompile_SD(struct jit_instr *op)
             address_or_address_reg = RCOpArg::Imm64(address & ~3);
             memory_location = MDisp(RDRAM, address & ~3);
         } else {
-            if (op->f) {
-                MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
-            } else {
-                MOV(32, R(RSCRATCH), Rb);
-            }
+            MOV_sum(32, RSCRATCH, Rb, Imm32((u32)(s16)op->f));
             AND(32, R(RSCRATCH), Imm32(~3));
 
             address_or_address_reg = RCOpArg::R(RSCRATCH);
@@ -2423,7 +2448,7 @@ void VR4300_Jitter::recompile_SD(struct jit_instr *op)
 
         switch_to_far_code();
         info.farcode = GetCodePtr();
-
+#endif
         update_hot_cycles(op);
 
         BitSet32 registers_in_use = caller_saved_registers_in_use();
@@ -2438,11 +2463,13 @@ void VR4300_Jitter::recompile_SD(struct jit_instr *op)
         // tlb exception check
         compile_tlb_exception_check(op, true, op->address + 4);
 
+#if !DISABLE_FASTMEM
         if (is_in_far_code()) {
             FixupBranch near_code = J(XEmitter::Jump::Near);
             switch_to_near_code();
             SetJumpTarget(near_code);
         }
+#endif
     }
 }
 

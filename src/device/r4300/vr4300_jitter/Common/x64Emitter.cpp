@@ -1702,7 +1702,11 @@ void XEmitter::MOV_sum(int bits, X64Reg dest, const OpArg& a1, const OpArg& a2)
   {
     if (!a2.IsSimpleReg() || a2.GetSimpleReg() != dest)
     {
-      MOV(bits, R(dest), a2);
+      if (bits == 32 && a2.IsImm()) {
+        MOV(bits, R(dest), Imm32(a2.Imm64()));
+      } else {
+        MOV(bits, R(dest), a2);
+      }
     }
     return;
   }
@@ -1710,7 +1714,11 @@ void XEmitter::MOV_sum(int bits, X64Reg dest, const OpArg& a1, const OpArg& a2)
   {
     if (!a1.IsSimpleReg() || a1.GetSimpleReg() != dest)
     {
-      MOV(bits, R(dest), a1);
+      if (bits == 32 && a1.IsImm()) {
+        MOV(bits, R(dest), Imm32(a1.Imm64()));
+      } else {
+        MOV(bits, R(dest), a1);
+      }
     }
     return;
   }
@@ -1718,13 +1726,21 @@ void XEmitter::MOV_sum(int bits, X64Reg dest, const OpArg& a1, const OpArg& a2)
   // If dest == a1 or dest == a2 we can simplify this
   if (a1.IsSimpleReg() && a1.GetSimpleReg() == dest)
   {
-    ADD(bits, R(dest), a2);
+    if (bits == 32 && a2.IsImm()) {
+      ADD(bits, R(dest), Imm32(a2.Imm64()));
+    } else {
+      ADD(bits, R(dest), a2);
+    }
     return;
   }
 
   if (a2.IsSimpleReg() && a2.GetSimpleReg() == dest)
   {
-    ADD(bits, R(dest), a1);
+    if (bits == 32 && a1.IsImm()) {
+      ADD(bits, R(dest), Imm32(a1.Imm64()));
+    } else {
+      ADD(bits, R(dest), a1);
+    }
     return;
   }
 

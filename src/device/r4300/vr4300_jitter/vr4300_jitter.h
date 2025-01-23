@@ -48,6 +48,11 @@ extern "C" {
 #define VR4300_JITTER_ARM 3
 #define VR4300_JITTER_ARM64 4
 
+// TODO: Create a JitSettings class and move things below here there as runtime options.
+
+#define DISABLE_FASTMEM 0
+#define DISABLE_RDRAM_OPTIMIZATION 0
+
 #define MAX_FAULT_COUNT 0
 
 #define DEBUG_PREDICTIONS 0

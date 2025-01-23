@@ -506,39 +506,23 @@ void VR4300_Jitter::mov_3(int bits, const Gen::X64Reg &dest1, const Gen::X64Reg 
         if (source1.IsSimpleReg() && source2.IsSimpleReg() && source3.IsSimpleReg()) {
             Gen::X64Reg source_reg1 = source1.GetSimpleReg(), source_reg2 = source2.GetSimpleReg(), source_reg3 = source3.GetSimpleReg();
 
-            if (source_reg1 != dest1) {
-                if (dest1 == source_reg2) {
-                    XCHG(bits, R(source_reg1), R(source_reg2));
-                    Gen::X64Reg tmp = source_reg2;
-                    source_reg2 = source_reg1;
-                    source_reg1 = tmp;
-                } else if (dest1 == source_reg3) {
-                    XCHG(bits, R(source_reg1), R(source_reg3));
-                    Gen::X64Reg tmp = source_reg3;
-                    source_reg3 = source_reg1;
-                    source_reg1 = tmp;
-                }
-
-                if (source_reg1 != dest1) {
-                    MOV(bits, R(dest1), R(source_reg1));
-                }
+            if (dest2 == source_reg1 || dest3 == source_reg1) {
+                PUSH(bits, R(source_reg1));
             }
 
-            if (source_reg2 != dest2) {
-                if (dest2 == source_reg3) {
-                    XCHG(bits, R(source_reg2), R(source_reg3));
-                    Gen::X64Reg tmp = source_reg3;
-                    source_reg3 = source_reg2;
-                    source_reg2 = tmp;
-                }
-
-                if (source_reg2 != dest2) {
-                    MOV(bits, R(dest2), R(source_reg2));
-                }
-            }
-
-            if (source_reg3 != dest3) {
+            if (dest2 != source_reg2 && dest3 != source_reg3) {
+                MOVTwo(bits, dest2, source_reg2, 0, dest3, source_reg3);
+            } else if (dest3 != source_reg3) {
                 MOV(bits, R(dest3), R(source_reg3));
+            } else if (dest2 != source_reg2) {
+                MOV(bits, R(dest2), R(source_reg2));
+            }
+
+            if (dest2 == source_reg1 || dest3 == source_reg1) {
+                POP(bits, R(source_reg1));
+            }
+            if (dest1 != source_reg1) {
+                MOV(bits, R(dest1), R(source_reg1));
             }
         } else if (source1.IsSimpleReg() && source2.IsSimpleReg()) {
             MOVTwo(bits, dest1, source1.GetSimpleReg(), 0, dest2, source2.GetSimpleReg());
@@ -600,7 +584,7 @@ void VR4300_Jitter::mov_3(int bits, const Gen::X64Reg &dest1, const Gen::X64Reg 
     }
 }
 
-BitSet32 VR4300_Jitter::caller_saved_registers_in_use(void)
+BitSet32 VR4300_Jitter::caller_saved_registers_in_use()
 {
   BitSet32 in_use = m_gpr.RegistersInUse() | (m_fpr.RegistersInUse() << 16);
   in_use[RHOTSTATE2] = 1;
@@ -644,7 +628,13 @@ void VR4300_Jitter::generate_asm()
     MOV(64, R(RHOTSTATE2), Imm64((u64)HOT_STATE + 0x180));
     MOV(64, R(RHOTSTATE3), Imm64((u64)HOT_STATE + 0x280));
 
+#if DISABLE_FASTMEM
+#if !DISABLE_RDRAM_OPTIMIZATION
+    MOV(64, R(RDRAM), ImmPtr(m_rdram_ptr));
+#endif
+#else
     MOV(64, R(RDRAM), ImmPtr(m_physical_base));
+#endif
 #if USE_REG_FOR_STORED_PC
     MOV(64, R(RSTOREDPC), Imm32(0));
 #endif
@@ -2827,6 +2817,7 @@ void VR4300_Jitter::TLBWrite(unsigned int idx)
             if (m_tlb_mappings[i] != physical_address) {
                 if (m_tlb_mappings[i]) m_block_cache.EraseVirtualRange(virtual_address, m_tlb_mappings[i], 0x1000);
 
+#if !DISABLE_FASTMEM
 #if MEMMAP_TLB_REGIONS
                 Common::UnWriteProtectMemory(m_physical_base + MM_RDRAM_DRAM + virtual_address, 0x1000, false);
                 m_arena.UnmapFromMemoryRegion(m_physical_base + MM_RDRAM_DRAM + virtual_address, 0x1000);
@@ -2837,10 +2828,13 @@ void VR4300_Jitter::TLBWrite(unsigned int idx)
                     }
                 }
 #endif
+#endif
             } else {
                 ValidBlockSetVirtual(virtual_address);
+#if !DISABLE_FASTMEM
 #if MEMMAP_TLB_REGIONS
                 Common::UnWriteProtectMemory(m_physical_base + MM_RDRAM_DRAM + virtual_address, 0x1000, false);
+#endif
 #endif
             }
 
@@ -2856,6 +2850,7 @@ void VR4300_Jitter::TLBWrite(unsigned int idx)
             if (m_tlb_mappings[i] != physical_address) {
                 if (m_tlb_mappings[i]) m_block_cache.EraseVirtualRange(virtual_address, m_tlb_mappings[i], 0x1000);
 
+#if !DISABLE_FASTMEM
 #if MEMMAP_TLB_REGIONS
                 Common::UnWriteProtectMemory(m_physical_base + MM_RDRAM_DRAM + virtual_address, 0x1000, false);
                 m_arena.UnmapFromMemoryRegion(m_physical_base + MM_RDRAM_DRAM + virtual_address, 0x1000);
@@ -2866,10 +2861,13 @@ void VR4300_Jitter::TLBWrite(unsigned int idx)
                     }
                 }
 #endif
+#endif
             } else {
                 ValidBlockSetVirtual(virtual_address);
+#if !DISABLE_FASTMEM
 #if MEMMAP_TLB_REGIONS
                 Common::UnWriteProtectMemory(m_physical_base + MM_RDRAM_DRAM + virtual_address, 0x1000, false);
+#endif
 #endif
             }
 
@@ -5170,6 +5168,7 @@ void *VR4300_Jitter::InitializeFastmem()
 
     install_exception_handler();
 
+#if !DISABLE_FASTMEM
     if (m_arena.MapInMemoryRegion(m_rdram_position, RDRAM_MAX_SIZE, m_physical_base + MM_RDRAM_DRAM) != m_physical_base + MM_RDRAM_DRAM) {
         abort();
     }
@@ -5183,6 +5182,9 @@ void *VR4300_Jitter::InitializeFastmem()
     }
 
     return m_physical_base;
+#else
+    return m_rdram_ptr;
+#endif
 }
 
 void vr4300_jitter_map_corrupt_rdram(int corrupt)
@@ -5194,6 +5196,7 @@ void VR4300_Jitter::MapCorruptRdram(bool corrupt)
 {
     HOT_STATE->rdram_generate_slowcode = corrupt;
     HOT_STATE->rdram_corruption_changed = 1;
+#if !DISABLE_FASTMEM
     if (corrupt) {
         m_arena.UnmapFromMemoryRegion(m_physical_base + MM_RDRAM_DRAM, 0x1000);
         m_arena.UnmapFromMemoryRegion(m_physical_base + MM_RDRAM_DRAM + R4300_KSEG0, 0x1000);
@@ -5211,6 +5214,7 @@ void VR4300_Jitter::MapCorruptRdram(bool corrupt)
             abort();
         }
     }
+#endif
 
     // Can't clear the cache here, since we might still be in a block!
     // It happens on the next RecompileBlock.
