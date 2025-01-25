@@ -2536,6 +2536,12 @@ void VR4300_Jitter::compile_invalidate_code(const RCOpArg &addr, uint32_t addr_o
 
 void VR4300_Jitter::compile_goto_dispatcher_destinhotstate_ret()
 {
+#if DISABLE_CALLRET_OPTIMIZATION
+    RCForkGuard gpr_guard = m_gpr.Fork();
+    RCForkGuard fpr_guard = m_fpr.Fork();
+
+    compile_goto_dispatcher_destinhotstate(NULL, false, false);
+#else
     m_gpr.Flush();
     m_fpr.Flush();
 
@@ -2556,10 +2562,17 @@ void VR4300_Jitter::compile_goto_dispatcher_destinhotstate_ret()
 
     embed_valid_block_check_pc();
     JMP(m_dispatcher_mispredicted_ret_1, XEmitter::Jump::Near);
+#endif
 }
 
 void VR4300_Jitter::compile_goto_dispatcher_ret(struct jit_instr *op, u32 address)
 {
+#if DISABLE_CALLRET_OPTIMIZATION
+    RCForkGuard gpr_guard = m_gpr.Fork();
+    RCForkGuard fpr_guard = m_fpr.Fork();
+
+    compile_goto_dispatcher(NULL, address, false, false);
+#else
     m_gpr.Flush();
     m_fpr.Flush();
 
@@ -2577,10 +2590,15 @@ void VR4300_Jitter::compile_goto_dispatcher_ret(struct jit_instr *op, u32 addres
     SetJumpTarget(no_predict);
     embed_valid_block_check_pc();
     JMP(m_dispatcher_mispredicted_ret_3, XEmitter::Jump::Near);
+#endif
 }
 
 void VR4300_Jitter::compile_goto_dispatcher(struct jit_instr *op, u32 address, bool call, bool may_continue, bool flush)
 {
+#if DISABLE_CALLRET_OPTIMIZATION
+    call = false;
+#endif
+
     MOV(32, HOTSTATE_VAR(pc), Imm32(address));
 
     JitBlock::LinkData linkData;
@@ -2638,6 +2656,10 @@ FixupBranch VR4300_Jitter::check_pc_equals(uint32_t expected_pc)
 
 void VR4300_Jitter::compile_goto_dispatcher_destinhotstate(struct jit_instr *op, bool call, bool may_continue, bool checkstop, bool flush, u32 after)
 {
+#if DISABLE_CALLRET_OPTIMIZATION
+    call = false;
+#endif
+
     if (flush) {
         m_gpr.Flush();
         m_fpr.Flush();
