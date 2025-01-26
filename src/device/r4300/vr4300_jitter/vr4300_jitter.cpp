@@ -2540,7 +2540,7 @@ void VR4300_Jitter::compile_goto_dispatcher_destinhotstate_ret()
     RCForkGuard gpr_guard = m_gpr.Fork();
     RCForkGuard fpr_guard = m_fpr.Fork();
 
-    compile_goto_dispatcher_destinhotstate(NULL, false, false);
+    compile_goto_dispatcher_destinhotstate(NULL, false);
 #else
     m_gpr.Flush();
     m_fpr.Flush();
@@ -2571,7 +2571,7 @@ void VR4300_Jitter::compile_goto_dispatcher_ret(struct jit_instr *op, u32 addres
     RCForkGuard gpr_guard = m_gpr.Fork();
     RCForkGuard fpr_guard = m_fpr.Fork();
 
-    compile_goto_dispatcher(NULL, address, false, false);
+    compile_goto_dispatcher(NULL, address, false);
 #else
     m_gpr.Flush();
     m_fpr.Flush();
@@ -2593,7 +2593,7 @@ void VR4300_Jitter::compile_goto_dispatcher_ret(struct jit_instr *op, u32 addres
 #endif
 }
 
-void VR4300_Jitter::compile_goto_dispatcher(struct jit_instr *op, u32 address, bool call, bool may_continue, bool flush)
+void VR4300_Jitter::compile_goto_dispatcher(struct jit_instr *op, u32 address, bool call, bool flush)
 {
 #if DISABLE_CALLRET_OPTIMIZATION
     call = false;
@@ -2627,7 +2627,7 @@ void VR4300_Jitter::compile_goto_dispatcher(struct jit_instr *op, u32 address, b
         CALL(m_dispatcher_start);
         POP(RSCRATCH);
 
-        compile_goto_dispatcher(NULL /* force a block check */, get_address_of_nth_instruction_after(op, 2), false, false, false);
+        compile_goto_dispatcher(NULL /* force a block check */, get_address_of_nth_instruction_after(op, 2), false, false);
     } else {
         linkData.exitPtrs = GetWritableCodePtr();
         JMP(m_dispatcher_start, XEmitter::Jump::Near);
@@ -2654,7 +2654,7 @@ FixupBranch VR4300_Jitter::check_pc_equals(uint32_t expected_pc)
     return unchanged;
 }
 
-void VR4300_Jitter::compile_goto_dispatcher_destinhotstate(struct jit_instr *op, bool call, bool may_continue, bool checkstop, bool flush, u32 after)
+void VR4300_Jitter::compile_goto_dispatcher_destinhotstate(struct jit_instr *op, bool call, bool checkstop, bool flush, u32 after)
 {
 #if DISABLE_CALLRET_OPTIMIZATION
     call = false;
@@ -2670,7 +2670,7 @@ void VR4300_Jitter::compile_goto_dispatcher_destinhotstate(struct jit_instr *op,
         CALL(m_dispatcher_start);
         POP(RSCRATCH);
 
-        compile_goto_dispatcher(NULL /* force a block check */, after ? after : get_address_of_nth_instruction_after(op, 2), false, false, false);
+        compile_goto_dispatcher(NULL /* force a block check */, after ? after : get_address_of_nth_instruction_after(op, 2), false, false);
     } else {
         const u8 *address = checkstop ? m_dispatcher_checkstop : m_dispatcher_start;
         JMP(address, XEmitter::Jump::Near);
@@ -2751,7 +2751,7 @@ void VR4300_Jitter::compile_INTERPRETER_FALLBACK(struct jit_instr *op, u32 addre
         RCForkGuard gpr_guard = m_gpr.Fork();
         RCForkGuard fpr_guard = m_fpr.Fork();
 
-        compile_goto_dispatcher_destinhotstate(NULL, false, false);
+        compile_goto_dispatcher_destinhotstate(NULL, false);
     }
 
     SetJumpTarget(pc_as_expected);
@@ -3031,7 +3031,7 @@ void VR4300_Jitter::compile_tlb_exception_check(struct jit_instr *op, bool updat
             m_gpr.Revert();
             m_fpr.Revert();
 
-            compile_goto_dispatcher_destinhotstate(op, false, false);
+            compile_goto_dispatcher_destinhotstate(op, false);
         }
 
         FixupBranch near_code = J(XEmitter::Jump::Near);
@@ -3051,7 +3051,7 @@ void VR4300_Jitter::compile_tlb_exception_check(struct jit_instr *op, bool updat
             m_gpr.Revert();
             m_fpr.Revert();
 
-            compile_goto_dispatcher_destinhotstate(op, false, false);
+            compile_goto_dispatcher_destinhotstate(op, false);
         }
 
         SetJumpTarget(no_exc);
@@ -3105,7 +3105,7 @@ void VR4300_Jitter::recompile_ERET(struct jit_instr *op)
 
     compile_check_cycle_count(op, 0);
 
-    compile_goto_dispatcher_destinhotstate(op, false, false, true);
+    compile_goto_dispatcher_destinhotstate(op, false, true);
 }
 
 void VR4300_Jitter::recompile_MFC0(struct jit_instr *op)
@@ -3444,7 +3444,7 @@ void VR4300_Jitter::recompile_MTC0(struct jit_instr *op)
 
                 compile_cycle_count_checks(op, 0, !HOT_STATE->inDelaySlot, false, 0);
 
-                compile_goto_dispatcher(op, op->address + 4, false, false);
+                compile_goto_dispatcher(op, op->address + 4, false);
             }
             break;
         case CP0_CAUSE_REG: {
@@ -3551,7 +3551,7 @@ void VR4300_Jitter::compile_check_cycle_count(struct jit_instr *op, uint32_t in_
             RCForkGuard gpr_guard = m_gpr.Fork();
             RCForkGuard fpr_guard = m_fpr.Fork();
 
-            compile_goto_dispatcher_destinhotstate(op, false, false);
+            compile_goto_dispatcher_destinhotstate(op, false);
         }
 
         SetJumpTarget(no_exc);
@@ -3564,7 +3564,7 @@ void VR4300_Jitter::compile_check_cycle_count(struct jit_instr *op, uint32_t in_
             RCForkGuard gpr_guard = m_gpr.Fork();
             RCForkGuard fpr_guard = m_fpr.Fork();
 
-            compile_goto_dispatcher_destinhotstate(op, false, false);
+            compile_goto_dispatcher_destinhotstate(op, false);
 
         }
 
@@ -4419,7 +4419,7 @@ void VR4300_Jitter::recompile_delay_slot(struct jit_instr *op, bool skip_instruc
             MOV(32, HOTSTATE_VAR(delay_slot), Imm32(0));
         }
 
-        compile_goto_dispatcher_destinhotstate(&op[-1], false, false);
+        compile_goto_dispatcher_destinhotstate(&op[-1], false);
     } else if (!op->is_branch_or_jump) {
         embed_valid_block_check(skip_instruction ? op->address + 4 : op->address, (op->address & 0xFFF) == 0, !skip_instruction, skip_instruction);
         if (!skip_instruction) {
@@ -4865,7 +4865,7 @@ void *VR4300_Jitter::RecompileBlock(unsigned int addr)
     RCForkGuard gpr_guard = m_gpr.Fork();
     RCForkGuard fpr_guard = m_fpr.Fork();
 
-    compile_goto_dispatcher(NULL, nextPC, false, false);
+    compile_goto_dispatcher(NULL, nextPC, false);
 
     AlignCode4();
 

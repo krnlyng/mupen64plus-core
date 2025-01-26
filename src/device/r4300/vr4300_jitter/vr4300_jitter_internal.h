@@ -256,8 +256,8 @@ private:
         void compile_invalidate_code(const RCOpArg &addr, uint32_t addr_offset, const RCX64Reg &scratch);
         void compile_goto_dispatcher_destinhotstate_ret();
         void compile_goto_dispatcher_ret(struct jit_instr *op, u32 address);
-        void compile_goto_dispatcher_destinhotstate(struct jit_instr *op, bool call, bool may_continue, bool checkstop = false, bool flush = true, u32 after = 0);
-        void compile_goto_dispatcher(struct jit_instr *op, u32 address, bool call, bool may_continue, bool flush = true);
+        void compile_goto_dispatcher_destinhotstate(struct jit_instr *op, bool call, bool checkstop = false, bool flush = true, u32 after = 0);
+        void compile_goto_dispatcher(struct jit_instr *op, u32 address, bool call, bool flush = true);
 
         Gen::FixupBranch check_pc_differs(uint32_t expected_pc);
         Gen::FixupBranch check_pc_equals(uint32_t expected_pc);

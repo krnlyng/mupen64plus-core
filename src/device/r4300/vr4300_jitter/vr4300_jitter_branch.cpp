@@ -89,7 +89,7 @@ void VR4300_Jitter::recompile_BNE(struct jit_instr *op, bool likely)
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false);
         } else {
             recompile_delay_slot(&op[1], likely);
             return;
@@ -104,7 +104,7 @@ void VR4300_Jitter::recompile_BNE(struct jit_instr *op, bool likely)
 
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false);
         }
 
         SetJumpTarget(eq);
@@ -155,7 +155,7 @@ void VR4300_Jitter::recompile_BEQ(struct jit_instr *op, bool likely)
         recompile_delay_slot(&op[1], false);
         compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-        compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+        compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false);
         return;
     }
 
@@ -167,7 +167,7 @@ void VR4300_Jitter::recompile_BEQ(struct jit_instr *op, bool likely)
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false);
         } else {
             recompile_delay_slot(&op[1], likely);
             return;
@@ -181,7 +181,7 @@ void VR4300_Jitter::recompile_BEQ(struct jit_instr *op, bool likely)
 
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false);
         }
 
         SetJumpTarget(neq);
@@ -210,7 +210,7 @@ void VR4300_Jitter::recompile_BC1T(struct jit_instr *op, bool likely)
         recompile_delay_slot(&op[1], false);
         compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-        compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+        compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false);
     }
 
     SetJumpTarget(skip_branch);
@@ -238,7 +238,7 @@ void VR4300_Jitter::recompile_BC1F(struct jit_instr *op, bool likely)
         recompile_delay_slot(&op[1], false);
         compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-        compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+        compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false);
     }
 
     SetJumpTarget(skip_branch);
@@ -279,7 +279,7 @@ void VR4300_Jitter::recompile_BLEZ(struct jit_instr *op, bool likely)
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false);
         } else {
             recompile_delay_slot(&op[1], likely);
         }
@@ -294,7 +294,7 @@ void VR4300_Jitter::recompile_BLEZ(struct jit_instr *op, bool likely)
 
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false);
         }
 
         SetJumpTarget(greater_than_0);
@@ -336,7 +336,7 @@ void VR4300_Jitter::recompile_BGTZ(struct jit_instr *op, bool likely)
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false);
         } else {
             recompile_delay_slot(&op[1], likely);
         }
@@ -350,7 +350,7 @@ void VR4300_Jitter::recompile_BGTZ(struct jit_instr *op, bool likely)
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false);
         }
 
         SetJumpTarget(less_than_or_equal_0);
@@ -435,9 +435,9 @@ void VR4300_Jitter::recompile_JALR(struct jit_instr *op)
             }
         } else {
             if (!was_imm) {
-                compile_goto_dispatcher_destinhotstate(op, true, true);
+                compile_goto_dispatcher_destinhotstate(op, true);
             } else {
-                compile_goto_dispatcher(op, imm_addr, true, true);
+                compile_goto_dispatcher(op, imm_addr, true);
             }
         }
     }
@@ -465,7 +465,7 @@ void VR4300_Jitter::recompile_JAL(struct jit_instr *op)
 
         compile_cycle_count_checks(op, target, false, false, op[0].address + 8);
 
-        compile_goto_dispatcher(op, target, true, true);
+        compile_goto_dispatcher(op, target, true);
     }
 }
 
@@ -538,9 +538,9 @@ void VR4300_Jitter::recompile_JR(struct jit_instr *op)
         }
     } else {
         if (!was_imm) {
-            compile_goto_dispatcher_destinhotstate(op, false, false);
+            compile_goto_dispatcher_destinhotstate(op, false);
         } else {
-            compile_goto_dispatcher(op, imm_addr, false, false);
+            compile_goto_dispatcher(op, imm_addr, false);
         }
     }
 
@@ -563,7 +563,7 @@ void VR4300_Jitter::recompile_J(struct jit_instr *op)
     recompile_delay_slot(&op[1], false);
     compile_cycle_count_checks(op, target, false, false, op[0].address + 8);
 
-    compile_goto_dispatcher(op, target, false, false);
+    compile_goto_dispatcher(op, target, false);
 }
 
 void VR4300_Jitter::recompile_BGEZ(struct jit_instr *op, bool likely, bool link)
@@ -598,7 +598,7 @@ void VR4300_Jitter::recompile_BGEZ(struct jit_instr *op, bool likely, bool link)
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), link, link);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), link);
         } else {
             recompile_delay_slot(&op[1], likely);
         }
@@ -612,7 +612,7 @@ void VR4300_Jitter::recompile_BGEZ(struct jit_instr *op, bool likely, bool link)
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), link, link);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), link);
         }
 
         SetJumpTarget(less_than_0);
@@ -668,7 +668,7 @@ void VR4300_Jitter::recompile_BLTZ(struct jit_instr *op, bool likely, bool link)
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), link, link);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), link);
         } else {
             recompile_delay_slot(&op[1], likely);
         }
@@ -682,7 +682,7 @@ void VR4300_Jitter::recompile_BLTZ(struct jit_instr *op, bool likely, bool link)
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), link, link);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), link);
         }
 
         SetJumpTarget(not_less_than_0);
