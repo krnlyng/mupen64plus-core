@@ -598,7 +598,7 @@ void VR4300_Jitter::recompile_BGEZ(struct jit_instr *op, bool likely, bool link)
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), link, link);
         } else {
             recompile_delay_slot(&op[1], likely);
         }
@@ -668,7 +668,7 @@ void VR4300_Jitter::recompile_BLTZ(struct jit_instr *op, bool likely, bool link)
             recompile_delay_slot(&op[1], false);
             compile_cycle_count_checks(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false, op[0].address + 8);
 
-            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), false, false);
+            compile_goto_dispatcher(op, op[0].address + (s32)((s16)(op->f + 1) * 4), link, link);
         } else {
             recompile_delay_slot(&op[1], likely);
         }
