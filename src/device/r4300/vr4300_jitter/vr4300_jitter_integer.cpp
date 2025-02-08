@@ -1465,11 +1465,11 @@ void VR4300_Jitter::recompile_DDIV(struct jit_instr *op, bool unsigned_div)
     VALIDATE_IN(op, s);
     VALIDATE_IN(op, t);
 
-    if (m_gpr.IsImm(op->s) && m_gpr.IsImm(op->t)) {
+    if ((!op->s || m_gpr.IsImm(op->s)) && (!op->t || m_gpr.IsImm(op->t))) {
         if (unsigned_div) {
-            if (m_gpr.Imm64(op->t) != 0) {
-                    u64 res = (u64)m_gpr.Imm64(op->s) / (u64)m_gpr.Imm64(op->t);
-                    u64 rem = (u64)m_gpr.Imm64(op->s) % (u64)m_gpr.Imm64(op->t);
+            if (op->t && (m_gpr.Imm64(op->t) != 0)) {
+                    u64 res = (u64)(op->s ? m_gpr.Imm64(op->s) : 0) / (u64)m_gpr.Imm64(op->t);
+                    u64 rem = (u64)(op->s ? m_gpr.Imm64(op->s) : 0) % (u64)m_gpr.Imm64(op->t);
                     if (vr4300_jitter_value_fits_in_32_bit_imm_positive(res)) {
                         MOV(64, (HOTSTATE_VAR(lo)), Imm32(res));
                     } else {
@@ -1484,10 +1484,10 @@ void VR4300_Jitter::recompile_DDIV(struct jit_instr *op, bool unsigned_div)
                     }
             } else {
                 MOV(64, (HOTSTATE_VAR(lo)), Imm64(-1));
-                if (vr4300_jitter_value_fits_in_32_bit_imm_positive(m_gpr.Imm64(op->s))) {
-                    MOV(64, (HOTSTATE_VAR(hi)), Imm32(m_gpr.Imm64(op->s)));
+                if (vr4300_jitter_value_fits_in_32_bit_imm_positive(op->s ? m_gpr.Imm64(op->s) : 0)) {
+                    MOV(64, (HOTSTATE_VAR(hi)), Imm32(op->s ? m_gpr.Imm64(op->s) : 0));
                 } else {
-                    MOV(64, R(RSCRATCH), Imm64(m_gpr.Imm64(op->s)));
+                    MOV(64, R(RSCRATCH), Imm64(op->s ? m_gpr.Imm64(op->s) : 0));
                     MOV(64, (HOTSTATE_VAR(hi)), R(RSCRATCH));
                 }
             }
@@ -1519,9 +1519,9 @@ void VR4300_Jitter::recompile_DDIV(struct jit_instr *op, bool unsigned_div)
                 MOV(64, (HOTSTATE_VAR(hi)), R(RSCRATCH));
             }
         }
-    } else if (op->s && op->t) {
-        RCOpArg Rs = m_gpr.Use(op->s, RCMode::Read);
-        RCOpArg Rt = m_gpr.Use(op->t, RCMode::Read);
+    } else if (op->s || op->t) {
+        RCOpArg Rs = op->s ? m_gpr.Use(op->s, RCMode::Read) : RCOpArg::Imm64(0);
+        RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RCX64Reg rax = m_gpr.Scratch(RAX);
         RCX64Reg rdx = m_gpr.Scratch(RDX);
         RCX64Reg scratch = m_gpr.Scratch();
@@ -1566,17 +1566,18 @@ void VR4300_Jitter::recompile_DDIV(struct jit_instr *op, bool unsigned_div)
         } else {
             MOV(64, R(RSCRATCH), Imm64(-1));
         }
-        CMP(64, Rs, R(RSCRATCH));
+
+        CMP(64, Rs, Imm32(0));
         FixupBranch rs_less_than_0 = J_CC(CC_L);
 
-        MOV(64, (HOTSTATE_VAR(lo)), Imm32(1));
+        MOV(64, (HOTSTATE_VAR(lo)), R(RSCRATCH)); // -1
         MOV(64, R(RSCRATCH), Rs);
         MOV(64, (HOTSTATE_VAR(hi)), R(RSCRATCH));
 
         FixupBranch exit2 = J();
 
         SetJumpTarget(rs_less_than_0);
-        MOV(64, (HOTSTATE_VAR(lo)), R(RSCRATCH)); // -1
+        MOV(64, (HOTSTATE_VAR(lo)), Imm32(1));
         MOV(64, R(RSCRATCH), Rs);
         MOV(64, (HOTSTATE_VAR(hi)), R(RSCRATCH));
 
