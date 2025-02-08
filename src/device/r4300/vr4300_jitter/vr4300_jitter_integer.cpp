@@ -1577,7 +1577,12 @@ void VR4300_Jitter::recompile_DDIV(struct jit_instr *op, bool unsigned_div)
         FixupBranch exit2 = J();
 
         SetJumpTarget(rs_less_than_0);
-        MOV(64, (HOTSTATE_VAR(lo)), Imm32(1));
+        if (unsigned_div) {
+            MOV(64, R(RSCRATCH), Imm64(-1));
+            MOV(64, (HOTSTATE_VAR(lo)), R(RSCRATCH));
+        } else {
+            MOV(64, (HOTSTATE_VAR(lo)), Imm32(1));
+        }
         MOV(64, R(RSCRATCH), Rs);
         MOV(64, (HOTSTATE_VAR(hi)), R(RSCRATCH));
 
