@@ -639,10 +639,10 @@ void VR4300_Jitter::recompile_CEIL_W_D(struct jit_instr *op)
 
 void VR4300_Jitter::recompile_CEIL_W_S(struct jit_instr *op)
 {
-    VALIDATE_FIN(op, s);
+    VALIDATE_FIN32(op, s);
     VALIDATE_FOUT32(op, d);
 
-    RCOpArg Rs = m_fpr.Use(op->s, RCMode::Read);
+    RCOpArg Rs = m_fpr.Use(op->s, RCMode::Read, true);
     RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
     RegCache::Realize(Rs, Rd);
 
@@ -1337,7 +1337,7 @@ void VR4300_Jitter::recompile_ROUND_L_S(struct jit_instr *op)
     VALIDATE_FOUT(op, d);
 
     RCOpArg Rs = m_fpr.Use(op->s, RCMode::Read, true);
-    RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+    RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
     RCX64Reg scratch2 = m_fpr.Scratch();
     RCOpArg gprscratch = m_gpr.Scratch();
     RegCache::Realize(Rs, Rd, scratch2, gprscratch);
