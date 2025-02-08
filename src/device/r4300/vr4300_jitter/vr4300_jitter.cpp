@@ -2914,6 +2914,88 @@ void VR4300_Jitter::TLBWrite(unsigned int idx)
     }
 }
 
+void VR4300_Jitter::compile_exception_general(struct jit_instr *op)
+{
+    SUB(32, HOTSTATE_VAR(cycle_count), Imm32(m_r4300->cp0.count_per_op));
+    update_cycle_count(op, true);
+    if (HOT_STATE->inDelaySlot) do_core_compare(op, op->address);
+
+    OR(32, HOTSTATE_CP0REG(CP0_STATUS_REG), Imm32(CP0_STATUS_EXL));
+
+    if (HOT_STATE->inDelaySlot) {
+        OR(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_BD));
+        MOV(32, HOTSTATE_CP0REG(CP0_EPC_REG), Imm32(op->address - 4));
+    } else {
+        MOV(32, HOTSTATE_CP0REG(CP0_EPC_REG), Imm32(op->address));
+        AND(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(~CP0_CAUSE_BD));
+    }
+
+    MOV(32, HOTSTATE_VAR(pc), Imm32(op->address));
+
+    if (HOT_STATE->inDelaySlot) do_core_compare(op, op->address);
+
+    {
+        RCForkGuard gpr_guard = m_gpr.Fork();
+        RCForkGuard fpr_guard = m_fpr.Fork();
+
+        compile_goto_dispatcher(op, 0x80000180, false);
+    }
+}
+
+void VR4300_Jitter::compile_cop1_usable_check(struct jit_instr *op)
+{
+    TEST(32, HOTSTATE_CP0REG(CP0_STATUS_REG), Imm32(CP0_STATUS_CU1));
+    FixupBranch unusable = J_CC(CC_Z, XEmitter::Jump::Near);
+
+    switch_to_far_code();
+    SetJumpTarget(unusable);
+
+    MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE1));
+
+    compile_exception_general(op);
+
+    FixupBranch near_code = J(XEmitter::Jump::Near);
+    switch_to_near_code();
+    SetJumpTarget(near_code);
+}
+
+void VR4300_Jitter::compile_cop2_usable_check(struct jit_instr *op)
+{
+    TEST(32, HOTSTATE_CP0REG(CP0_STATUS_REG), Imm32(CP0_STATUS_CU2));
+    FixupBranch unusable = J_CC(CC_Z, XEmitter::Jump::Near);
+}
+
+void VR4300_Jitter::recompile_TEQ(struct jit_instr *op)
+{
+    VALIDATE_IN(op, t);
+    VALIDATE_IN(op, s);
+    {
+        RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
+        RCOpArg Rs = op->s ? m_gpr.Use(op->s, RCMode::Read) : RCOpArg::Imm64(0);
+        RegCache::Realize(Rt, Rs);
+
+        if (Rt.IsSimpleReg()) {
+            if (!Rs.IsImm()) {
+                CMP(64, Rt, Rs);
+            } else {
+                MOV(64, R(RSCRATCH), Rs);
+                CMP(64, Rt, R(RSCRATCH));
+            }
+        } else if (Rs.IsSimpleReg()) {
+            if (!Rt.IsImm()) {
+                CMP(64, Rs, Rt);
+            } else {
+                MOV(64, R(RSCRATCH), Rt);
+                CMP(64, Rs, R(RSCRATCH));
+            }
+        }
+    }
+    FixupBranch neq = J_CC(CC_NE, XEmitter::Jump::Near);
+    MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_TR));
+    compile_exception_general(op);
+    SetJumpTarget(neq);
+}
+
 void VR4300_Jitter::recompile_TLBWI(struct jit_instr *op)
 {
     MOV(32, HOTSTATE_VAR(pc), Imm32(op->address));
@@ -4382,6 +4464,9 @@ void VR4300_Jitter::recompile_instruction(struct jit_instr *op)
                 break;
             case VR4300_OP_CEIL_L_S:
                 recompile_CEIL_L_S(op);
+                break;
+            case VR4300_OP_TEQ:
+                recompile_TEQ(op);
                 break;
             default:
                 DebugMessage(M64MSG_VERBOSE, "UNIMPLEMENTED OPERATION@0x%08x: %d INSTRUCTION: %x, %s\n", op->address, op->operation, op->instruction, op->name);
