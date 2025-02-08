@@ -310,8 +310,8 @@ void VR4300_Jitter::recompile_AND(struct jit_instr *op)
                     AND(64, Rd, Rs);
                 }
             } else {
-                RCOpArg Rs = m_gpr.Use(op->s, RCMode::Read);
-                RCOpArg Rt = m_gpr.Use(op->t, RCMode::Read);
+                RCOpArg Rs = op->s ? m_gpr.Use(op->s, RCMode::Read) : RCOpArg::Imm64(0);
+                RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
                 RCX64Reg Rd = m_gpr.Bind(op->d, RCMode::Write);
                 RegCache::Realize(Rd, Rt, Rs);
 
