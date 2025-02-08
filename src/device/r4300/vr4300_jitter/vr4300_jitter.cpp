@@ -1057,7 +1057,11 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
                     // MTC1, CTC1
                     instr->regsIn[instr->t] = 1;
                     if (strncmp(instr->name, "DMT", 3) == 0) {
-                        instr->fregsOut[instr->d] = 1;
+                        if (!HOT_STATE->fr_is_set) {
+                            instr->fregsOut[instr->d & ~1] = 1;
+                        } else {
+                            instr->fregsOut[instr->d] = 1;
+                        }
                     } else if (strncmp(instr->name, "MT", 2) == 0) {
                         instr->fregsOut32[instr->d] = 1;
                     }
@@ -1066,7 +1070,11 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
                     if (strncmp(instr->name, "MF", 2) == 0 || strncmp(instr->name, "CF", 2) == 0) {
                         instr->fregsIn32[instr->d] = 1;
                     } else if (strncmp(instr->name, "DMF", 3) == 0 || strncmp(instr->name, "DCF", 3) == 0) {
-                        instr->fregsIn[instr->d] = 1;
+                        if (!HOT_STATE->fr_is_set) {
+                            instr->fregsIn[instr->d & ~1] = 1;
+                        } else {
+                            instr->fregsIn[instr->d] = 1;
+                        }
                     }
                     instr->regsOut[instr->t] = 1;
                 }
@@ -1118,13 +1126,21 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
             if (is_float) {
                 if (is_load) {
                     if (instr->name[1] == 'D') {
-                        instr->fregsOut[instr->t] = 1;
+                        if (!HOT_STATE->fr_is_set) {
+                            instr->fregsOut[instr->t & ~1] = 1;
+                        } else {
+                            instr->fregsOut[instr->t] = 1;
+                        }
                     } else if (instr->name[1] == 'W') {
                         instr->fregsOut32[instr->t] = 1;
                     } else found = 555;
                 } else {
                     if (instr->name[1] == 'D') {
-                        instr->fregsIn[instr->t] = 1;
+                        if (!HOT_STATE->fr_is_set) {
+                            instr->fregsIn[instr->t & ~1] = 1;
+                        } else {
+                            instr->fregsIn[instr->t] = 1;
+                        }
                     } else if (instr->name[1] == 'W') {
                         instr->fregsIn32[instr->t] = 1;
                     } else found = 556;

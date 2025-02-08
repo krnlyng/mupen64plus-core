@@ -2164,7 +2164,11 @@ void VR4300_Jitter::recompile_LWC1(struct jit_instr *op)
 
 void VR4300_Jitter::recompile_LDC1(struct jit_instr *op)
 {
-    VALIDATE_FOUT(op, t);
+    if (!HOT_STATE->fr_is_set) {
+        VALIDATE_FOUT_DOUBLE_NO_FR(op, t);
+    } else {
+        VALIDATE_FOUT(op, t);
+    }
     VALIDATE_IN(op, b);
     assert(op->has_f);
 
@@ -2239,12 +2243,16 @@ void VR4300_Jitter::recompile_LDC1(struct jit_instr *op)
         compile_tlb_exception_check(op, true, op->address + 4);
     }
 
-    store_host_register_to_cop1_register(op, 64, RCOpArg::R(ABI_RETURN), op->t);
+    store_host_register_to_cop1_register(op, 64, RCOpArg::R(ABI_RETURN), HOT_STATE->fr_is_set ? op->t : (op->t & ~1));
 }
 
 void VR4300_Jitter::recompile_SDC1(struct jit_instr *op)
 {
-    VALIDATE_FIN(op, t);
+    if (!HOT_STATE->fr_is_set) {
+        VALIDATE_FIN_DOUBLE_NO_FR(op, t);
+    } else {
+        VALIDATE_FIN(op, t);
+    }
     VALIDATE_IN(op, b);
     assert(op->has_f);
 
@@ -2282,7 +2290,7 @@ void VR4300_Jitter::recompile_SDC1(struct jit_instr *op)
         u8 *code_before = GetWritableCodePtr();
 #endif
 
-        load_cop1_register_to_host_register(op, 64, op->t, out_reg);
+        load_cop1_register_to_host_register(op, 64, HOT_STATE->fr_is_set ? op->t : (op->t & ~1), out_reg);
 
 #if !DISABLE_FASTMEM
         OpArg memory_location;
@@ -2366,7 +2374,11 @@ void VR4300_Jitter::recompile_MTC1(struct jit_instr *op)
 void VR4300_Jitter::recompile_DMTC1(struct jit_instr *op)
 {
     VALIDATE_IN(op, t);
-    VALIDATE_FOUT(op, d);
+    if (!HOT_STATE->fr_is_set) {
+        VALIDATE_FOUT_DOUBLE_NO_FR(op, d);
+    } else {
+        VALIDATE_FOUT(op, d);
+    }
     // in vr43xx.pdf the register is s, not d
     // but our decoder puts it into d because MTC0
     // has it in d too.
@@ -2375,9 +2387,9 @@ void VR4300_Jitter::recompile_DMTC1(struct jit_instr *op)
         RCOpArg Rt = m_gpr.Use(op->t, RCMode::Read);
         RegCache::Realize(Rt);
 
-        store_host_register_to_cop1_register(op, 64, Rt, op->d);
+        store_host_register_to_cop1_register(op, 64, Rt, HOT_STATE->fr_is_set ? op->d : (op->d & ~1));
     } else {
-        store_host_register_to_cop1_register(op, 64, RCOpArg::Imm64(0), op->d);
+        store_host_register_to_cop1_register(op, 64, RCOpArg::Imm64(0), HOT_STATE->fr_is_set ? op->d : (op->d & ~1));
     }
 }
 
@@ -2399,7 +2411,11 @@ void VR4300_Jitter::recompile_MFC1(struct jit_instr *op)
 
 void VR4300_Jitter::recompile_DMFC1(struct jit_instr *op)
 {
-    VALIDATE_FIN(op, d);
+    if (!HOT_STATE->fr_is_set) {
+        VALIDATE_FIN_DOUBLE_NO_FR(op, d);
+    } else {
+        VALIDATE_FIN(op, d);
+    }
     VALIDATE_OUT(op, t);
     // in vr43xx.pdf the register is s, not d
     // but our decoder puts it into d because MTC0
@@ -2409,7 +2425,7 @@ void VR4300_Jitter::recompile_DMFC1(struct jit_instr *op)
         RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::Write);
         RegCache::Realize(Rt);
 
-        load_cop1_register_to_host_register(op, 64, op->d, Rt);
+        load_cop1_register_to_host_register(op, 64, HOT_STATE->fr_is_set ? op->d : (op->d & ~1), Rt);
     }
 }
 
