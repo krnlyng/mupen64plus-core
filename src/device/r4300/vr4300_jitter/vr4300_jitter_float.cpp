@@ -2439,7 +2439,7 @@ void VR4300_Jitter::recompile_CTC1(struct jit_instr *op)
     // has it in d too.
 
     if (op->d == 31) {
-        RCOpArg Rt = m_gpr.Use(op->t, RCMode::Read);
+        RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
         RegCache::Realize(Rt);
 
         if (!Rt.IsSimpleReg()) {
