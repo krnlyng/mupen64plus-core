@@ -2068,6 +2068,7 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
                 || instr->has_b /* loadstore */
                 || instr->operation == VR4300_OP_DCFC1
                 || instr->operation == VR4300_OP_DCTC1
+                || instr->operation == VR4300_OP_CTC1
                 // RESERVED instructions:
                 || instr->operation == VR4300_OP_CVT_W_W
                 || instr->operation == VR4300_OP_CVT_L_L

@@ -2608,25 +2608,34 @@ void VR4300_Jitter::recompile_CTC1(struct jit_instr *op)
     // has it in d too.
 
     if (op->d == 31) {
-        RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
-        RegCache::Realize(Rt);
+        {
+            RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
+            RegCache::Realize(Rt);
 
-        if (!Rt.IsSimpleReg()) {
-            if (Rt.IsImm()) {
-                MOV(32, (HOTSTATE_VAR(cp1_fcr31)), Imm32(Rt.Imm64()));
-            } else {
-                RCX64Reg scratch = m_gpr.Scratch();
-                RegCache::Realize(scratch);
-
-                MOV(32, R(scratch), Rt);
-                MOV(32, (HOTSTATE_VAR(cp1_fcr31)), R(scratch));
-            }
-        } else {
-            MOV(32, (HOTSTATE_VAR(cp1_fcr31)), Rt);
+            MOV(64, R(RSCRATCH), Rt);
+            AND(32, R(RSCRATCH), Imm32(0x183ffff));
+            MOV(32, HOTSTATE_VAR(cp1_fcr31), R(RSCRATCH));
         }
-//TODO
-//    MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE));
-//    compile_exception_general(op);
+
+        // If both cause & enable are set, fire an exception.
+#define TEST_EXCEPTION(exception_target) \
+        do { \
+            TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_ENABLE_ ## exception_target ## _BIT)); \
+            FixupBranch no_ ##exception_target ## _fpe = J_CC(CC_Z, XEmitter::Jump::Near); \
+            TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_ ## exception_target ## _BIT)); \
+            FixupBranch no_ ##exception_target ## _fpe2 = J_CC(CC_Z, XEmitter::Jump::Near); \
+            MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE)); \
+            compile_exception_general(op); \
+            SetJumpTarget(no_ ##exception_target ## _fpe); \
+            SetJumpTarget(no_ ##exception_target ## _fpe2); \
+        } while(0)
+
+
+        TEST_EXCEPTION(DIVBYZERO);
+        TEST_EXCEPTION(INEXACT);
+        TEST_EXCEPTION(UNDERFLOW);
+        TEST_EXCEPTION(OVERFLOW);
+        TEST_EXCEPTION(INVALIDOP);
     }
 }
 
