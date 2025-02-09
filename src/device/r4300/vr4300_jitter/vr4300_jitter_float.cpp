@@ -157,7 +157,8 @@ void vr4300_jitter_check_input_float(uint32_t* fcr31, int32_t value)
     switch (fpclassify(*reinterpret_cast<float*>(&value)))
     {
     default:
-    case FP_SUBNORMAL: // TODO
+    case FP_SUBNORMAL:
+        (*fcr31) |= FCR31_CAUSE_UNIMPLOP_BIT;
         return;
     case FP_NAN:
         (*fcr31) |= FCR31_CAUSE_INVALIDOP_BIT;
@@ -171,7 +172,8 @@ void vr4300_jitter_check_input_double(uint32_t* fcr31, int64_t value)
     switch (fpclassify(*reinterpret_cast<double*>(&value)))
     {
     default:
-    case FP_SUBNORMAL: // TODO
+    case FP_SUBNORMAL:
+        (*fcr31) |= FCR31_CAUSE_UNIMPLOP_BIT;
         return;
     case FP_NAN:
         (*fcr31) |= FCR31_CAUSE_INVALIDOP_BIT;
