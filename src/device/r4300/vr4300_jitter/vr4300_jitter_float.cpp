@@ -2630,12 +2630,21 @@ void VR4300_Jitter::recompile_CTC1(struct jit_instr *op)
             SetJumpTarget(no_ ##exception_target ## _fpe2); \
         } while(0)
 
+#define TEST_EXCEPTION_CAUSE_ONLY(exception_target) \
+        do { \
+            TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_ ## exception_target ## _BIT)); \
+            FixupBranch no_ ##exception_target ## _fpe = J_CC(CC_Z, XEmitter::Jump::Near); \
+            MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE)); \
+            compile_exception_general(op); \
+            SetJumpTarget(no_ ##exception_target ## _fpe); \
+        } while(0)
 
         TEST_EXCEPTION(DIVBYZERO);
         TEST_EXCEPTION(INEXACT);
         TEST_EXCEPTION(UNDERFLOW);
         TEST_EXCEPTION(OVERFLOW);
         TEST_EXCEPTION(INVALIDOP);
+        TEST_EXCEPTION_CAUSE_ONLY(UNIMPLOP);
     }
 }
 
