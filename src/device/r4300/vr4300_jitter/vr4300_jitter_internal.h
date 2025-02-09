@@ -480,7 +480,7 @@ private:
 
         void compile_fpu_reset_cause(struct jit_instr *op);
         void compile_fpu_reset_exceptions(struct jit_instr *op);
-        void compile_fpu_check_exceptions(struct jit_instr *op);
+        void compile_fpu_check_exceptions(struct jit_instr *op, bool convert);
         void compile_fpu_check_input_float(struct jit_instr *op, const RCX64Reg &reg);
         void compile_fpu_check_input_double(struct jit_instr *op, const RCX64Reg &reg);
         void compile_fpu_check_input_float(struct jit_instr *op, const RCOpArg &input);
