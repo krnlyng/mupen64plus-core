@@ -1995,6 +1995,7 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
     BitSet32 fregsDiscardable = BitSet32{};
 
     bool first_float_instruction = true;
+    bool first_ctc2_instruction = true;
 
     for (int i = 0; i < code_block->num_instructions; i++) {
         struct jit_instr *instr = &code_block->instr[i];
@@ -2006,6 +2007,15 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
 
         if (instr->is_delay_slot) {
             first_float_instruction = true;
+        }
+
+        if (instr->has_x && instr->x == 2) {
+            instr->is_first_ctc2_instruction = first_ctc2_instruction;
+            first_ctc2_instruction = false;
+        }
+
+        if (instr->is_delay_slot) {
+            first_ctc2_instruction = true;
         }
     }
 
@@ -2043,6 +2053,7 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
         fregsInUse |= instr->fregsIn | instr->fregsOut | instr->fregsIn32 | instr->fregsOut32;
 
         if ((((instr->has_x && (instr->x == 1)) || instr->has_a) && instr->is_first_float_instruction)
+                || instr->is_first_ctc2_instruction
                 || code_block->modifies_status_reg
                 || code_block->modifies_count_reg
                 || instr->operation == VR4300_OP_ERET

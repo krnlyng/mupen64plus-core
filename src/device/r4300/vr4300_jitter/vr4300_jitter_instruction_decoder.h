@@ -34,6 +34,7 @@ struct jit_instr {
     bool may_cause_exception = false;
     bool is_delay_slot = false;
     bool is_first_float_instruction = false;
+    bool is_first_ctc2_instruction = false;
     bool next_is_follow = false;
     bool next_is_link_continue = false;
     bool next_is_extend = false;
