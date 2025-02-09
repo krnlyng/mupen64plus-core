@@ -485,8 +485,10 @@ private:
         void compile_fpu_check_input_double(struct jit_instr *op, const RCX64Reg &reg);
         void compile_fpu_check_input_float(struct jit_instr *op, const RCOpArg &input);
         void compile_fpu_check_input_double(struct jit_instr *op, const RCOpArg &input);
-        void compile_fpu_check_output_float(struct jit_instr *op, const RCX64Reg &reg);
-        void compile_fpu_check_output_double(struct jit_instr *op, const RCX64Reg &reg);
+        void compile_fpu_check_output_float(struct jit_instr *op);
+        void compile_fpu_check_output_double(struct jit_instr *op);
+        void compile_fpu_store_output_float_for_check(struct jit_instr *op, const RCX64Reg &reg);
+        void compile_fpu_store_output_double_for_check(struct jit_instr *op, const RCX64Reg &reg);
 
         void recompile_instruction(struct jit_instr *op);
         void embed_valid_block_check(u32 address, bool force_check, bool delay_slot = false, bool update_cc = false);

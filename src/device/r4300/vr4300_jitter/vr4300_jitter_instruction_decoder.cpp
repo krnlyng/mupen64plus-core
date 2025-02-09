@@ -1798,6 +1798,10 @@ void decode_ORI(int k, int t, int s, jit_instr *instr) {
     instr->has_s = true;
     instr->name = "ORI";
 }
+void decode_RESERVED31(jit_instr *instr) {
+    instr->operation = VR4300_OP_RESERVED31;
+    instr->name = "RESERVED31";
+}
 void decode_ROUND_L_D(int d, int s, jit_instr *instr) {
     instr->operation = VR4300_OP_ROUND_L_D;
     instr->d = d;
@@ -2683,6 +2687,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
     switch(inst.raw & (OP_MASK_0_31)) {
         case 1107296280:
             decode_ERET(instr);
+            return true;
+        case 2080630843:
+            decode_RESERVED31(instr);
             return true;
         case 15:
             decode_SYNC(instr);

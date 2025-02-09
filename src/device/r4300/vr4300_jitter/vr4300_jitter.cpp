@@ -2053,6 +2053,9 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
         fregsInUse |= instr->fregsIn | instr->fregsOut | instr->fregsIn32 | instr->fregsOut32;
 
         if ((((instr->has_x && (instr->x == 1)) || instr->has_a) && instr->is_first_float_instruction)
+#ifdef ACCURATE_FPU_BEHAVIOR
+                || ((instr->has_x && (instr->x == 1)) || instr->has_a)
+#endif
                 || instr->is_first_ctc2_instruction
                 || code_block->modifies_status_reg
                 || code_block->modifies_count_reg
@@ -2084,6 +2087,7 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
                 || instr->operation == VR4300_OP_DMTC3
                 || instr->operation == VR4300_OP_MFC3
                 || instr->operation == VR4300_OP_MTC3
+                || instr->operation == VR4300_OP_RESERVED31
                 // We always insert a check at page boundaries.
                 || (vr4300_jitter_address_needs_translation(instr->address) && ((instr->address & 0xFFF) == 0))
                 // || (i > 1 && code_block->instr[i - 1].is_delay_slot && is_likely_branch(&code_block->instr[i - 2]) && ((instr->address & 0xFFF) == 4))
@@ -4642,6 +4646,7 @@ void VR4300_Jitter::recompile_instruction(struct jit_instr *op)
             case VR4300_OP_DMTC3:
             case VR4300_OP_MFC3:
             case VR4300_OP_MTC3:
+            case VR4300_OP_RESERVED31:
                 recompile_RESERVED(op);
                 break;
             default:
