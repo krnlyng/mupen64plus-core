@@ -3847,7 +3847,7 @@ void VR4300_Jitter::recompile_CTC2(struct jit_instr *op)
 {
     RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
     RegCache::Realize(Rt);
-    if (!Rt.IsSimpleReg() && !Rt.IsImm()) {
+    if (!Rt.IsSimpleReg()) {
         MOV(64, R(RSCRATCH), Rt);
         MOV(64, HOTSTATE_VAR(cp2_latch), R(RSCRATCH));
     } else {
@@ -3859,7 +3859,7 @@ void VR4300_Jitter::recompile_MTC2(struct jit_instr *op)
 {
     RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
     RegCache::Realize(Rt);
-    if (!Rt.IsSimpleReg() && !Rt.IsImm()) {
+    if (!Rt.IsSimpleReg()) {
         MOV(64, R(RSCRATCH), Rt);
         MOV(64, HOTSTATE_VAR(cp2_latch), R(RSCRATCH));
     } else {
@@ -3871,7 +3871,7 @@ void VR4300_Jitter::recompile_DMTC2(struct jit_instr *op)
 {
     RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
     RegCache::Realize(Rt);
-    if (!Rt.IsSimpleReg() && !Rt.IsImm()) {
+    if (!Rt.IsSimpleReg()) {
         MOV(64, R(RSCRATCH), Rt);
         MOV(64, HOTSTATE_VAR(cp2_latch), R(RSCRATCH));
     } else {
