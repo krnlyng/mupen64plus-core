@@ -3025,6 +3025,13 @@ void VR4300_Jitter::recompile_RESERVED_COP2(struct jit_instr *op)
     compile_exception_general(op);
 }
 
+void VR4300_Jitter::recompile_RESERVED(struct jit_instr *op)
+{
+    MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_RI));
+
+    compile_exception_general(op);
+}
+
 void VR4300_Jitter::recompile_TLBWI(struct jit_instr *op)
 {
     MOV(32, HOTSTATE_VAR(pc), Imm32(op->address));
@@ -4504,6 +4511,12 @@ void VR4300_Jitter::recompile_instruction(struct jit_instr *op)
             case VR4300_OP_SDC2:
             case VR4300_OP_SWC2:
                 recompile_RESERVED_COP2(op);
+                break;
+            case VR4300_OP_CVT_W_W:
+            case VR4300_OP_CVT_L_L:
+            case VR4300_OP_CVT_S_S:
+            case VR4300_OP_CVT_D_D:
+                recompile_RESERVED(op);
                 break;
             default:
                 DebugMessage(M64MSG_VERBOSE, "UNIMPLEMENTED OPERATION@0x%08x: %d INSTRUCTION: %x, %s\n", op->address, op->operation, op->instruction, op->name);

@@ -463,6 +463,7 @@ private:
         void recompile_TEQ(struct jit_instr *op);
 
         void recompile_RESERVED_COP2(struct jit_instr *op);
+        void recompile_RESERVED(struct jit_instr *op);
 
         void div_core(struct jit_instr *op, const RCOpArg &edx, const RCOpArg &eax, const RCOpArg &Rs, const RCOpArg &Rt, bool un_signed);
 
