@@ -118,9 +118,12 @@ void VR4300_Jitter::compile_fpu_check_exceptions(struct jit_instr *op)
         TEST(32, R(RSCRATCH), Imm32(FE_ ##exception_host)); \
         FixupBranch no_ ##exception_host = J_CC(CC_Z, XEmitter::Jump::Near); \
         OR(32, (HOTSTATE_VAR(cp1_fcr31)), Imm32(FCR31_CAUSE_ ## exception_target ## _BIT)); \
-        OR(32, (HOTSTATE_VAR(cp1_fcr31)), Imm32(FCR31_FLAG_ ## exception_target ## _BIT)); \
+        TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_ENABLE_ ## exception_target ## _BIT)); \
+        FixupBranch no_ ##exception_host ## _fpe = J_CC(CC_Z, XEmitter::Jump::Near); \
         MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE)); \
         compile_exception_general(op); \
+        SetJumpTarget(no_ ##exception_host ## _fpe); \
+        OR(32, (HOTSTATE_VAR(cp1_fcr31)), Imm32(FCR31_FLAG_ ## exception_target ## _BIT)); \
         SetJumpTarget(no_ ##exception_host); \
     } while (0)
 
