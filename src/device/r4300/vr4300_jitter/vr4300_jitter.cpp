@@ -2963,6 +2963,17 @@ void VR4300_Jitter::compile_cop2_usable_check(struct jit_instr *op)
 {
     TEST(32, HOTSTATE_CP0REG(CP0_STATUS_REG), Imm32(CP0_STATUS_CU2));
     FixupBranch unusable = J_CC(CC_Z, XEmitter::Jump::Near);
+
+    switch_to_far_code();
+    SetJumpTarget(unusable);
+
+    MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE2));
+
+    compile_exception_general(op);
+
+    FixupBranch near_code = J(XEmitter::Jump::Near);
+    switch_to_near_code();
+    SetJumpTarget(near_code);
 }
 
 void VR4300_Jitter::recompile_TEQ(struct jit_instr *op)
@@ -2994,6 +3005,13 @@ void VR4300_Jitter::recompile_TEQ(struct jit_instr *op)
     MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_TR));
     compile_exception_general(op);
     SetJumpTarget(neq);
+}
+
+void VR4300_Jitter::recompile_RESERVED_COP2(struct jit_instr *op)
+{
+    MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_RI | CP0_CAUSE_CE2));
+
+    compile_exception_general(op);
 }
 
 void VR4300_Jitter::recompile_TLBWI(struct jit_instr *op)
@@ -4467,6 +4485,14 @@ void VR4300_Jitter::recompile_instruction(struct jit_instr *op)
                 break;
             case VR4300_OP_TEQ:
                 recompile_TEQ(op);
+                break;
+            case VR4300_OP_DCFC2:
+            case VR4300_OP_LDC2:
+            case VR4300_OP_DCTC2:
+            case VR4300_OP_LWC2:
+            case VR4300_OP_SDC2:
+            case VR4300_OP_SWC2:
+                recompile_RESERVED_COP2(op);
                 break;
             default:
                 DebugMessage(M64MSG_VERBOSE, "UNIMPLEMENTED OPERATION@0x%08x: %d INSTRUCTION: %x, %s\n", op->address, op->operation, op->instruction, op->name);

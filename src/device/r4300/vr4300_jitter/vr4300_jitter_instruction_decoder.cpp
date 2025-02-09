@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - vr4300_jitter_instruction_decoder.h                     *
+ *   Mupen64plus - vr4300_jitter_instruction_decoder.cpp                   *
  *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -18,7 +18,9 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+
 #include "vr4300_jitter_instruction_decoder.h"
+
 
 void decode_ABS_D(int d, int s, jit_instr *instr) {
     instr->operation = VR4300_OP_ABS_D;
@@ -796,6 +798,16 @@ void decode_DADDU(int d, int t, int s, jit_instr *instr) {
     instr->has_s = true;
     instr->name = "DADDU";
 }
+void decode_DCFC0(int d, int t, jit_instr *instr) {
+    instr->operation = VR4300_OP_DCFC0;
+    instr->d = d;
+    instr->has_d = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->has_x = true;
+    instr->x = 0;
+    instr->name = "DCFC0";
+}
 void decode_DCFC1(int d, int t, jit_instr *instr) {
     instr->operation = VR4300_OP_DCFC1;
     instr->d = d;
@@ -815,6 +827,16 @@ void decode_DCFC2(int d, int t, jit_instr *instr) {
     instr->has_x = true;
     instr->x = 2;
     instr->name = "DCFC2";
+}
+void decode_DCTC0(int d, int t, jit_instr *instr) {
+    instr->operation = VR4300_OP_DCTC0;
+    instr->d = d;
+    instr->has_d = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->has_x = true;
+    instr->x = 0;
+    instr->name = "DCTC0";
 }
 void decode_DCTC1(int d, int t, jit_instr *instr) {
     instr->operation = VR4300_OP_DCTC1;
@@ -1258,6 +1280,18 @@ void decode_LDC1(int f, int t, int b, jit_instr *instr) {
     instr->x = 1;
     instr->name = "LDC1";
 }
+void decode_LDC2(int f, int t, int b, jit_instr *instr) {
+    instr->operation = VR4300_OP_LDC2;
+    instr->f = f;
+    instr->has_f = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->b = b;
+    instr->has_b = true;
+    instr->has_x = true;
+    instr->x = 2;
+    instr->name = "LDC2";
+}
 void decode_LDL(int f, int t, int b, jit_instr *instr) {
     instr->operation = VR4300_OP_LDL;
     instr->f = f;
@@ -1347,6 +1381,18 @@ void decode_LWC1(int f, int t, int b, jit_instr *instr) {
     instr->has_x = true;
     instr->x = 1;
     instr->name = "LWC1";
+}
+void decode_LWC2(int f, int t, int b, jit_instr *instr) {
+    instr->operation = VR4300_OP_LWC2;
+    instr->f = f;
+    instr->has_f = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->b = b;
+    instr->has_b = true;
+    instr->has_x = true;
+    instr->x = 2;
+    instr->name = "LWC2";
 }
 void decode_LWL(int f, int t, int b, jit_instr *instr) {
     instr->operation = VR4300_OP_LWL;
@@ -1768,6 +1814,18 @@ void decode_SDC1(int f, int t, int b, jit_instr *instr) {
     instr->x = 1;
     instr->name = "SDC1";
 }
+void decode_SDC2(int f, int t, int b, jit_instr *instr) {
+    instr->operation = VR4300_OP_SDC2;
+    instr->f = f;
+    instr->has_f = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->b = b;
+    instr->has_b = true;
+    instr->has_x = true;
+    instr->x = 2;
+    instr->name = "SDC2";
+}
 void decode_SDL(int f, int t, int b, jit_instr *instr) {
     instr->operation = VR4300_OP_SDL;
     instr->f = f;
@@ -2027,6 +2085,18 @@ void decode_SWC1(int f, int t, int b, jit_instr *instr) {
     instr->has_x = true;
     instr->x = 1;
     instr->name = "SWC1";
+}
+void decode_SWC2(int f, int t, int b, jit_instr *instr) {
+    instr->operation = VR4300_OP_SWC2;
+    instr->f = f;
+    instr->has_f = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->b = b;
+    instr->has_b = true;
+    instr->has_x = true;
+    instr->x = 2;
+    instr->name = "SWC2";
 }
 void decode_SWL(int f, int t, int b, jit_instr *instr) {
     instr->operation = VR4300_OP_SWL;
@@ -2316,11 +2386,17 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
         case 1220542464:
             decode_CTC2(inst.CTC2_d, inst.CTC2_t, instr);
             return true;
+        case 1080033280:
+            decode_DCFC0(inst.DCFC0_d, inst.DCFC0_t, instr);
+            return true;
         case 1147142144:
             decode_DCFC1(inst.DCFC1_d, inst.DCFC1_t, instr);
             return true;
         case 1214251008:
             decode_DCFC2(inst.DCFC2_d, inst.DCFC2_t, instr);
+            return true;
+        case 1088421888:
+            decode_DCTC0(inst.DCTC0_d, inst.DCTC0_t, instr);
             return true;
         case 1155530752:
             decode_DCTC1(inst.DCTC1_d, inst.DCTC1_t, instr);
@@ -2914,6 +2990,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
         case 3556769792:
             decode_LDC1(inst.LDC1_f, inst.LDC1_t, inst.LDC1_b, instr);
             return true;
+        case 3623878656:
+            decode_LDC2(inst.LDC2_f, inst.LDC2_t, inst.LDC2_b, instr);
+            return true;
         case 1744830464:
             decode_LDL(inst.LDL_f, inst.LDL_t, inst.LDL_b, instr);
             return true;
@@ -2937,6 +3016,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
             return true;
         case 3288334336:
             decode_LWC1(inst.LWC1_f, inst.LWC1_t, inst.LWC1_b, instr);
+            return true;
+        case 3355443200:
+            decode_LWC2(inst.LWC2_f, inst.LWC2_t, inst.LWC2_b, instr);
             return true;
         case 2281701376:
             decode_LWL(inst.LWL_f, inst.LWL_t, inst.LWL_b, instr);
@@ -2965,6 +3047,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
         case 4093640704:
             decode_SDC1(inst.SDC1_f, inst.SDC1_t, inst.SDC1_b, instr);
             return true;
+        case 4160749568:
+            decode_SDC2(inst.SDC2_f, inst.SDC2_t, inst.SDC2_b, instr);
+            return true;
         case 2952790016:
             decode_SDL(inst.SDL_f, inst.SDL_t, inst.SDL_b, instr);
             return true;
@@ -2985,6 +3070,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
             return true;
         case 3825205248:
             decode_SWC1(inst.SWC1_f, inst.SWC1_t, inst.SWC1_b, instr);
+            return true;
+        case 3892314112:
+            decode_SWC2(inst.SWC2_f, inst.SWC2_t, inst.SWC2_b, instr);
             return true;
         case 2818572288:
             decode_SWL(inst.SWL_f, inst.SWL_t, inst.SWL_b, instr);

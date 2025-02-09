@@ -133,9 +133,9 @@ void VR4300_Jitter::compile_fpu_check_exceptions(struct jit_instr *op)
 #endif
 }
 
-void vr4300_jitter_check_input_float(uint32_t* fcr31, float value)
+void vr4300_jitter_check_input_float(uint32_t* fcr31, int32_t value)
 {
-    switch (fpclassify(value))
+    switch (fpclassify(*reinterpret_cast<float*>(&value)))
     {
     default:
     case FP_SUBNORMAL: // TODO
@@ -147,9 +147,9 @@ void vr4300_jitter_check_input_float(uint32_t* fcr31, float value)
     }
 }
 
-void vr4300_jitter_check_input_double(uint32_t* fcr31, double value)
+void vr4300_jitter_check_input_double(uint32_t* fcr31, int64_t value)
 {
-    switch (fpclassify(value))
+    switch (fpclassify(*reinterpret_cast<double*>(&value)))
     {
     default:
     case FP_SUBNORMAL: // TODO
@@ -161,9 +161,9 @@ void vr4300_jitter_check_input_double(uint32_t* fcr31, double value)
     }
 }
 
-void vr4300_jitter_check_output_float(uint32_t* fcr31, const float value)
+void vr4300_jitter_check_output_float(uint32_t* fcr31, int32_t value)
 {
-    switch (fpclassify(value))
+    switch (fpclassify(*reinterpret_cast<float*>(&value)))
     {
     case FP_SUBNORMAL:
         (*fcr31) |= FCR31_CAUSE_UNDERFLOW_BIT;
@@ -180,9 +180,9 @@ void vr4300_jitter_check_output_float(uint32_t* fcr31, const float value)
     }
 }
 
-void vr4300_jitter_check_output_double(uint32_t* fcr31, const double value)
+void vr4300_jitter_check_output_double(uint32_t* fcr31, int64_t value)
 {
-    switch (fpclassify(value))
+    switch (fpclassify(*reinterpret_cast<double*>(&value)))
     {
     case FP_SUBNORMAL:
         (*fcr31) |= FCR31_CAUSE_UNDERFLOW_BIT;
@@ -769,6 +769,32 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
         }
         case 2: {
             // C.EQ.fmt
+            FixupBranch nan = J_CC(CC_P, XEmitter::Jump::Near);
+
+            // here neither is nan
+            FixupBranch eq = J_CC(CC_E);
+
+            // neq
+            AND(32, (HOTSTATE_VAR(cp1_fcr31)), Imm32(~FCR31_CMP_BIT));
+            FixupBranch exit = J();
+            SetJumpTarget(eq);
+
+            // eq
+            OR(32, (HOTSTATE_VAR(cp1_fcr31)), Imm32(FCR31_CMP_BIT));
+
+            switch_to_far_code();
+            SetJumpTarget(nan);
+
+            // at least one is nan
+            AND(32, (HOTSTATE_VAR(cp1_fcr31)), Imm32(~FCR31_CMP_BIT));
+
+            leave_farcode();
+
+            SetJumpTarget(exit);
+            break;
+        }
+        case 3:  {
+            // C.UEQ.fmt
             FixupBranch nan = J_CC(CC_P, XEmitter::Jump::Near);
 
             // here neither is nan
