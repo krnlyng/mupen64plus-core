@@ -2065,6 +2065,13 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
                 || instr->has_b /* loadstore */
                 || instr->operation == VR4300_OP_DCFC1
                 || instr->operation == VR4300_OP_DCTC1
+                // RESERVED instructions:
+                || instr->operation == VR4300_OP_CVT_W_W
+                || instr->operation == VR4300_OP_CVT_L_L
+                || instr->operation == VR4300_OP_CVT_S_S
+                || instr->operation == VR4300_OP_CVT_D_D
+                || instr->operation == VR4300_OP_CVT_W_L
+                || instr->operation == VR4300_OP_CVT_L_W
                 // We always insert a check at page boundaries.
                 || (vr4300_jitter_address_needs_translation(instr->address) && ((instr->address & 0xFFF) == 0))
                 // || (i > 1 && code_block->instr[i - 1].is_delay_slot && is_likely_branch(&code_block->instr[i - 2]) && ((instr->address & 0xFFF) == 4))
@@ -4609,6 +4616,8 @@ void VR4300_Jitter::recompile_instruction(struct jit_instr *op)
             case VR4300_OP_CVT_L_L:
             case VR4300_OP_CVT_S_S:
             case VR4300_OP_CVT_D_D:
+            case VR4300_OP_CVT_W_L:
+            case VR4300_OP_CVT_L_W:
                 recompile_RESERVED(op);
                 break;
             default:
