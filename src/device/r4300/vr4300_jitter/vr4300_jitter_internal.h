@@ -460,7 +460,18 @@ private:
         void recompile_BLTZAL(struct jit_instr *op);
         void recompile_BLTZL(struct jit_instr *op);
 
+        void recompile_TGE(struct jit_instr *op);
+        void recompile_TGEU(struct jit_instr *op);
+        void recompile_TGEI(struct jit_instr *op);
+        void recompile_TGEIU(struct jit_instr *op);
+        void recompile_TLT(struct jit_instr *op);
+        void recompile_TLTU(struct jit_instr *op);
+        void recompile_TLTI(struct jit_instr *op);
+        void recompile_TLTIU(struct jit_instr *op);
         void recompile_TEQ(struct jit_instr *op);
+        void recompile_TEQI(struct jit_instr *op);
+        void recompile_TNE(struct jit_instr *op);
+        void recompile_TNEI(struct jit_instr *op);
 
         void recompile_RESERVED_COP2(struct jit_instr *op);
         void recompile_RESERVED(struct jit_instr *op);

@@ -2987,35 +2987,128 @@ void VR4300_Jitter::compile_cop2_usable_check(struct jit_instr *op)
     SetJumpTarget(near_code);
 }
 
+#define DO_TRAP_R_R(r1, r2, negative_cond) \
+    do \
+    { \
+        VALIDATE_IN(op, r1); \
+        VALIDATE_IN(op, r2); \
+        { \
+            RCOpArg Rt = op->r1 ? m_gpr.Use(op->r1, RCMode::Read) : RCOpArg::Imm64(0); \
+            RCOpArg Rs = op->r2 ? m_gpr.Use(op->r2, RCMode::Read) : RCOpArg::Imm64(0); \
+            RegCache::Realize(Rt, Rs); \
+             \
+            if (Rt.IsSimpleReg()) { \
+                if (!Rs.IsImm()) { \
+                    CMP(64, Rs, Rt); \
+                } else { \
+                    MOV(64, R(RSCRATCH), Rs); \
+                    CMP(64, R(RSCRATCH), Rt); \
+                } \
+            } else if (Rs.IsSimpleReg()) { \
+                if (!Rt.IsImm()) { \
+                    CMP(64, Rs, Rt); \
+                } else { \
+                    MOV(64, R(RSCRATCH), Rt); \
+                    CMP(64, Rs, R(RSCRATCH)); \
+                } \
+            } \
+        } \
+        FixupBranch ncond = J_CC(negative_cond, XEmitter::Jump::Near); \
+        MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_TR)); \
+        compile_exception_general(op); \
+        SetJumpTarget(ncond); \
+    } \
+    while (0) \
+
+#define DO_TRAP_R_I(r1, imm, negative_cond) \
+    do \
+    { \
+        VALIDATE_IN(op, r1); \
+        assert(op->has_k); \
+        { \
+            RCOpArg Rr1 = op->r1 ? m_gpr.Use(op->r1, RCMode::Read) : RCOpArg::Imm64(0); \
+            RegCache::Realize(Rr1); \
+            OpArg Rs = Rr1.IsImm() ? R(RSCRATCH2) : Rr1; \
+            if (Rr1.IsImm()) { \
+                if (vr4300_jitter_value_fits_in_32_bit_imm_positive(op->imm)) { \
+                    MOV(64, Rs, Imm32(op->imm)); \
+                } else { \
+                    MOV(64, Rs, Imm64(op->imm)); \
+                } \
+            } \
+             \
+            if (vr4300_jitter_value_fits_in_32_bit_imm_positive(op->imm)) { \
+                CMP(64, Rs, Imm32(op->imm)); \
+            } else { \
+                MOV(64, R(RSCRATCH), Imm64(op->imm)); \
+                CMP(64, Rs, R(RSCRATCH)); \
+            } \
+            FixupBranch ncond = J_CC(negative_cond, XEmitter::Jump::Near); \
+            MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_TR)); \
+            compile_exception_general(op); \
+            SetJumpTarget(ncond); \
+        } \
+    } \
+    while (0) \
+
+void VR4300_Jitter::recompile_TGE(struct jit_instr *op)
+{
+    DO_TRAP_R_R(t, s, CC_L);
+}
+
+void VR4300_Jitter::recompile_TGEU(struct jit_instr *op)
+{
+    DO_TRAP_R_R(t, s, CC_B);
+}
+
+void VR4300_Jitter::recompile_TGEI(struct jit_instr *op)
+{
+    DO_TRAP_R_I(s, k, CC_L);
+}
+
+void VR4300_Jitter::recompile_TGEIU(struct jit_instr *op)
+{
+    DO_TRAP_R_I(s, k, CC_B);
+}
+
+void VR4300_Jitter::recompile_TLT(struct jit_instr *op)
+{
+    DO_TRAP_R_R(t, s, CC_GE);
+}
+
+void VR4300_Jitter::recompile_TLTU(struct jit_instr *op)
+{
+    DO_TRAP_R_R(t, s, CC_AE);
+}
+
+void VR4300_Jitter::recompile_TLTI(struct jit_instr *op)
+{
+    DO_TRAP_R_I(s, k, CC_GE);
+}
+
+void VR4300_Jitter::recompile_TLTIU(struct jit_instr *op)
+{
+    DO_TRAP_R_I(s, k, CC_AE);
+}
+
 void VR4300_Jitter::recompile_TEQ(struct jit_instr *op)
 {
-    VALIDATE_IN(op, t);
-    VALIDATE_IN(op, s);
-    {
-        RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
-        RCOpArg Rs = op->s ? m_gpr.Use(op->s, RCMode::Read) : RCOpArg::Imm64(0);
-        RegCache::Realize(Rt, Rs);
+    DO_TRAP_R_R(t, s, CC_NE);
+}
 
-        if (Rt.IsSimpleReg()) {
-            if (!Rs.IsImm()) {
-                CMP(64, Rt, Rs);
-            } else {
-                MOV(64, R(RSCRATCH), Rs);
-                CMP(64, Rt, R(RSCRATCH));
-            }
-        } else if (Rs.IsSimpleReg()) {
-            if (!Rt.IsImm()) {
-                CMP(64, Rs, Rt);
-            } else {
-                MOV(64, R(RSCRATCH), Rt);
-                CMP(64, Rs, R(RSCRATCH));
-            }
-        }
-    }
-    FixupBranch neq = J_CC(CC_NE, XEmitter::Jump::Near);
-    MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_TR));
-    compile_exception_general(op);
-    SetJumpTarget(neq);
+void VR4300_Jitter::recompile_TEQI(struct jit_instr *op)
+{
+    DO_TRAP_R_I(s, k, CC_NE);
+}
+
+void VR4300_Jitter::recompile_TNE(struct jit_instr *op)
+{
+    DO_TRAP_R_R(t, s, CC_E);
+}
+
+void VR4300_Jitter::recompile_TNEI(struct jit_instr *op)
+{
+    DO_TRAP_R_I(s, k, CC_E);
 }
 
 void VR4300_Jitter::recompile_RESERVED_COP2(struct jit_instr *op)
