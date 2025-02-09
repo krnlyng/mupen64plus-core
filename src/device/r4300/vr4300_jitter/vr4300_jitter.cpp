@@ -2072,6 +2072,18 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
                 || instr->operation == VR4300_OP_CVT_D_D
                 || instr->operation == VR4300_OP_CVT_W_L
                 || instr->operation == VR4300_OP_CVT_L_W
+                || instr->operation == VR4300_OP_BC3F
+                || instr->operation == VR4300_OP_BC3FL
+                || instr->operation == VR4300_OP_BC3T
+                || instr->operation == VR4300_OP_BC3TL
+                || instr->operation == VR4300_OP_CFC3
+                || instr->operation == VR4300_OP_CTC3
+                || instr->operation == VR4300_OP_DCFC3
+                || instr->operation == VR4300_OP_DCTC3
+                || instr->operation == VR4300_OP_DMFC3
+                || instr->operation == VR4300_OP_DMTC3
+                || instr->operation == VR4300_OP_MFC3
+                || instr->operation == VR4300_OP_MTC3
                 // We always insert a check at page boundaries.
                 || (vr4300_jitter_address_needs_translation(instr->address) && ((instr->address & 0xFFF) == 0))
                 // || (i > 1 && code_block->instr[i - 1].is_delay_slot && is_likely_branch(&code_block->instr[i - 2]) && ((instr->address & 0xFFF) == 4))
@@ -4618,6 +4630,18 @@ void VR4300_Jitter::recompile_instruction(struct jit_instr *op)
             case VR4300_OP_CVT_D_D:
             case VR4300_OP_CVT_W_L:
             case VR4300_OP_CVT_L_W:
+            case VR4300_OP_BC3F:
+            case VR4300_OP_BC3FL:
+            case VR4300_OP_BC3T:
+            case VR4300_OP_BC3TL:
+            case VR4300_OP_CFC3:
+            case VR4300_OP_CTC3:
+            case VR4300_OP_DCFC3:
+            case VR4300_OP_DCTC3:
+            case VR4300_OP_DMFC3:
+            case VR4300_OP_DMTC3:
+            case VR4300_OP_MFC3:
+            case VR4300_OP_MTC3:
                 recompile_RESERVED(op);
                 break;
             default:

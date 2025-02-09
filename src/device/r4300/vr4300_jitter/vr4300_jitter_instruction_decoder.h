@@ -20,7 +20,6 @@
 
 #ifndef M64P_DEVICE_R4300_VR4300_JITTER_INSTRUCTION_DECODER_H
 #define M64P_DEVICE_R4300_VR4300_JITTER_INSTRUCTION_DECODER_H
-
 #include <cstdio>
 #include <cassert>
 #include <cstdlib>
@@ -256,6 +255,12 @@ union vr4300_instruction {
         uint32_t CFC2_opcode_21_31 : 11; // 578
     };
     struct {
+        uint32_t CFC3_opcode_0_10 : 11; // 0
+        uint32_t CFC3_d : 5; // 0
+        uint32_t CFC3_t : 5; // 0
+        uint32_t CFC3_opcode_21_31 : 11; // 610
+    };
+    struct {
         uint32_t CTC0_opcode_0_10 : 11; // 0
         uint32_t CTC0_d : 5; // 0
         uint32_t CTC0_t : 5; // 0
@@ -272,6 +277,12 @@ union vr4300_instruction {
         uint32_t CTC2_d : 5; // 0
         uint32_t CTC2_t : 5; // 0
         uint32_t CTC2_opcode_21_31 : 11; // 582
+    };
+    struct {
+        uint32_t CTC3_opcode_0_10 : 11; // 0
+        uint32_t CTC3_d : 5; // 0
+        uint32_t CTC3_t : 5; // 0
+        uint32_t CTC3_opcode_21_31 : 11; // 614
     };
     struct {
         uint32_t DADD_opcode_0_10 : 11; // 44
@@ -342,6 +353,12 @@ union vr4300_instruction {
         uint32_t DMFC2_opcode_21_31 : 11; // 577
     };
     struct {
+        uint32_t DMFC3_opcode_0_10 : 11; // 0
+        uint32_t DMFC3_d : 5; // 0
+        uint32_t DMFC3_t : 5; // 0
+        uint32_t DMFC3_opcode_21_31 : 11; // 609
+    };
+    struct {
         uint32_t DCFC0_opcode_0_10 : 11; // 0
         uint32_t DCFC0_d : 5; // 0
         uint32_t DCFC0_t : 5; // 0
@@ -358,6 +375,12 @@ union vr4300_instruction {
         uint32_t DCFC2_d : 5; // 0
         uint32_t DCFC2_t : 5; // 0
         uint32_t DCFC2_opcode_21_31 : 11; // 579
+    };
+    struct {
+        uint32_t DCFC3_opcode_0_10 : 11; // 0
+        uint32_t DCFC3_d : 5; // 0
+        uint32_t DCFC3_t : 5; // 0
+        uint32_t DCFC3_opcode_21_31 : 11; // 611
     };
     struct {
         uint32_t DMTC0_opcode_0_10 : 11; // 0
@@ -378,6 +401,12 @@ union vr4300_instruction {
         uint32_t DMTC2_opcode_21_31 : 11; // 581
     };
     struct {
+        uint32_t DMTC3_opcode_0_10 : 11; // 0
+        uint32_t DMTC3_d : 5; // 0
+        uint32_t DMTC3_t : 5; // 0
+        uint32_t DMTC3_opcode_21_31 : 11; // 613
+    };
+    struct {
         uint32_t DCTC0_opcode_0_10 : 11; // 0
         uint32_t DCTC0_d : 5; // 0
         uint32_t DCTC0_t : 5; // 0
@@ -394,6 +423,12 @@ union vr4300_instruction {
         uint32_t DCTC2_d : 5; // 0
         uint32_t DCTC2_t : 5; // 0
         uint32_t DCTC2_opcode_21_31 : 11; // 583
+    };
+    struct {
+        uint32_t DCTC3_opcode_0_10 : 11; // 0
+        uint32_t DCTC3_d : 5; // 0
+        uint32_t DCTC3_t : 5; // 0
+        uint32_t DCTC3_opcode_21_31 : 11; // 615
     };
     struct {
         uint32_t DMULT_opcode_0_15 : 16; // 28
@@ -609,6 +644,12 @@ union vr4300_instruction {
         uint32_t MFC2_opcode_21_31 : 11; // 576
     };
     struct {
+        uint32_t MFC3_opcode_0_10 : 11; // 0
+        uint32_t MFC3_d : 5; // 0
+        uint32_t MFC3_t : 5; // 0
+        uint32_t MFC3_opcode_21_31 : 11; // 608
+    };
+    struct {
         uint32_t MFHI_opcode_0_10 : 11; // 16
         uint32_t MFHI_d : 5; // 0
         uint32_t MFHI_opcode_16_31 : 16; // 0
@@ -635,6 +676,12 @@ union vr4300_instruction {
         uint32_t MTC2_d : 5; // 0
         uint32_t MTC2_t : 5; // 0
         uint32_t MTC2_opcode_21_31 : 11; // 580
+    };
+    struct {
+        uint32_t MTC3_opcode_0_10 : 11; // 0
+        uint32_t MTC3_d : 5; // 0
+        uint32_t MTC3_t : 5; // 0
+        uint32_t MTC3_opcode_21_31 : 11; // 612
     };
     struct {
         uint32_t MTHI_opcode_0_20 : 21; // 17
@@ -940,12 +987,20 @@ union vr4300_instruction {
         uint32_t BC1F_opcode_16_31 : 16; // 17664
     };
     struct {
+        uint32_t BC3F_f : 16; // 0
+        uint32_t BC3F_opcode_16_31 : 16; // 19712
+    };
+    struct {
         uint32_t BC0FL_f : 16; // 0
         uint32_t BC0FL_opcode_16_31 : 16; // 16642
     };
     struct {
         uint32_t BC1FL_f : 16; // 0
         uint32_t BC1FL_opcode_16_31 : 16; // 17666
+    };
+    struct {
+        uint32_t BC3FL_f : 16; // 0
+        uint32_t BC3FL_opcode_16_31 : 16; // 19714
     };
     struct {
         uint32_t BC0T_f : 16; // 0
@@ -956,12 +1011,20 @@ union vr4300_instruction {
         uint32_t BC1T_opcode_16_31 : 16; // 17665
     };
     struct {
+        uint32_t BC3T_f : 16; // 0
+        uint32_t BC3T_opcode_16_31 : 16; // 19713
+    };
+    struct {
         uint32_t BC0TL_f : 16; // 0
         uint32_t BC0TL_opcode_16_31 : 16; // 16643
     };
     struct {
         uint32_t BC1TL_f : 16; // 0
         uint32_t BC1TL_opcode_16_31 : 16; // 17667
+    };
+    struct {
+        uint32_t BC3TL_f : 16; // 0
+        uint32_t BC3TL_opcode_16_31 : 16; // 19715
     };
     struct {
         uint32_t ABS_S_opcode_0_5 : 6; // 5
@@ -1592,6 +1655,14 @@ extern "C" void BC1FL(void);
 extern "C" void BC1T(void);
 #define BC1TL_opcode_16_31_val 1157824512
 extern "C" void BC1TL(void);
+#define BC3F_opcode_16_31_val 1291845632
+extern "C" void BC3F(void);
+#define BC3FL_opcode_16_31_val 1291976704
+extern "C" void BC3FL(void);
+#define BC3T_opcode_16_31_val 1291911168
+extern "C" void BC3T(void);
+#define BC3TL_opcode_16_31_val 1292042240
+extern "C" void BC3TL(void);
 #define BEQ_opcode_26_31_val 268435456
 extern "C" void BEQ(void);
 #define BEQL_opcode_26_31_val 1342177280
@@ -1674,6 +1745,9 @@ extern "C" void CFC1(void);
 #define CFC2_opcode_0_10_val 0
 #define CFC2_opcode_21_31_val 1212153856
 extern "C" void CFC2(void);
+#define CFC3_opcode_0_10_val 0
+#define CFC3_opcode_21_31_val 1279262720
+extern "C" void CFC3(void);
 #define CTC0_opcode_0_10_val 0
 #define CTC0_opcode_21_31_val 1086324736
 extern "C" void CTC0(void);
@@ -1683,6 +1757,9 @@ extern "C" void CTC1(void);
 #define CTC2_opcode_0_10_val 0
 #define CTC2_opcode_21_31_val 1220542464
 extern "C" void CTC2(void);
+#define CTC3_opcode_0_10_val 0
+#define CTC3_opcode_21_31_val 1287651328
+extern "C" void CTC3(void);
 #define CVT_D_D_opcode_0_5_val 33
 #define CVT_D_D_opcode_16_31_val 1176502272
 extern "C" void CVT_D_D(void);
@@ -1762,6 +1839,9 @@ extern "C" void DCFC1(void);
 #define DCFC2_opcode_0_10_val 0
 #define DCFC2_opcode_21_31_val 1214251008
 extern "C" void DCFC2(void);
+#define DCFC3_opcode_0_10_val 0
+#define DCFC3_opcode_21_31_val 1281359872
+extern "C" void DCFC3(void);
 #define DCTC0_opcode_0_10_val 0
 #define DCTC0_opcode_21_31_val 1088421888
 extern "C" void DCTC0(void);
@@ -1771,6 +1851,9 @@ extern "C" void DCTC1(void);
 #define DCTC2_opcode_0_10_val 0
 #define DCTC2_opcode_21_31_val 1222639616
 extern "C" void DCTC2(void);
+#define DCTC3_opcode_0_10_val 0
+#define DCTC3_opcode_21_31_val 1289748480
+extern "C" void DCTC3(void);
 #define DDIV_opcode_0_15_val 30
 #define DDIV_opcode_26_31_val 0
 extern "C" void DDIV(void);
@@ -1804,6 +1887,9 @@ extern "C" void DMFC1(void);
 #define DMFC2_opcode_0_10_val 0
 #define DMFC2_opcode_21_31_val 1210056704
 extern "C" void DMFC2(void);
+#define DMFC3_opcode_0_10_val 0
+#define DMFC3_opcode_21_31_val 1277165568
+extern "C" void DMFC3(void);
 #define DMTC0_opcode_0_10_val 0
 #define DMTC0_opcode_21_31_val 1084227584
 extern "C" void DMTC0(void);
@@ -1813,6 +1899,9 @@ extern "C" void DMTC1(void);
 #define DMTC2_opcode_0_10_val 0
 #define DMTC2_opcode_21_31_val 1218445312
 extern "C" void DMTC2(void);
+#define DMTC3_opcode_0_10_val 0
+#define DMTC3_opcode_21_31_val 1285554176
+extern "C" void DMTC3(void);
 #define DMULT_opcode_0_15_val 28
 #define DMULT_opcode_26_31_val 0
 extern "C" void DMULT(void);
@@ -1934,6 +2023,9 @@ extern "C" void MFC1(void);
 #define MFC2_opcode_0_10_val 0
 #define MFC2_opcode_21_31_val 1207959552
 extern "C" void MFC2(void);
+#define MFC3_opcode_0_10_val 0
+#define MFC3_opcode_21_31_val 1275068416
+extern "C" void MFC3(void);
 #define MFHI_opcode_0_10_val 16
 #define MFHI_opcode_16_31_val 0
 extern "C" void MFHI(void);
@@ -1961,6 +2053,9 @@ extern "C" void MTC1(void);
 #define MTC2_opcode_0_10_val 0
 #define MTC2_opcode_21_31_val 1216348160
 extern "C" void MTC2(void);
+#define MTC3_opcode_0_10_val 0
+#define MTC3_opcode_21_31_val 1283457024
+extern "C" void MTC3(void);
 #define MTHI_opcode_0_20_val 17
 #define MTHI_opcode_26_31_val 0
 extern "C" void MTHI(void);
@@ -2226,223 +2321,235 @@ extern "C" void XORI(void);
 #define VR4300_OP_BC1FL 19
 #define VR4300_OP_BC1T 20
 #define VR4300_OP_BC1TL 21
-#define VR4300_OP_BEQ 22
-#define VR4300_OP_BEQL 23
-#define VR4300_OP_BGEZ 24
-#define VR4300_OP_BGEZAL 25
-#define VR4300_OP_BGEZALL 26
-#define VR4300_OP_BGEZL 27
-#define VR4300_OP_BGTZ 28
-#define VR4300_OP_BGTZL 29
-#define VR4300_OP_BLEZ 30
-#define VR4300_OP_BLEZL 31
-#define VR4300_OP_BLTZ 32
-#define VR4300_OP_BLTZAL 33
-#define VR4300_OP_BLTZALL 34
-#define VR4300_OP_BLTZL 35
-#define VR4300_OP_BNE 36
-#define VR4300_OP_BNEL 37
-#define VR4300_OP_BREAK 38
-#define VR4300_OP_CACHE 39
-#define VR4300_OP_CEIL_L_D 40
-#define VR4300_OP_CEIL_L_L 41
-#define VR4300_OP_CEIL_L_S 42
-#define VR4300_OP_CEIL_L_W 43
-#define VR4300_OP_CEIL_W_D 44
-#define VR4300_OP_CEIL_W_L 45
-#define VR4300_OP_CEIL_W_S 46
-#define VR4300_OP_CEIL_W_W 47
-#define VR4300_OP_CFC0 48
-#define VR4300_OP_CFC1 49
-#define VR4300_OP_CFC2 50
-#define VR4300_OP_CTC0 51
-#define VR4300_OP_CTC1 52
-#define VR4300_OP_CTC2 53
-#define VR4300_OP_CVT_D_D 54
-#define VR4300_OP_CVT_D_L 55
-#define VR4300_OP_CVT_D_S 56
-#define VR4300_OP_CVT_D_W 57
-#define VR4300_OP_CVT_L_D 58
-#define VR4300_OP_CVT_L_L 59
-#define VR4300_OP_CVT_L_S 60
-#define VR4300_OP_CVT_L_W 61
-#define VR4300_OP_CVT_S_D 62
-#define VR4300_OP_CVT_S_L 63
-#define VR4300_OP_CVT_S_S 64
-#define VR4300_OP_CVT_S_W 65
-#define VR4300_OP_CVT_W_D 66
-#define VR4300_OP_CVT_W_L 67
-#define VR4300_OP_CVT_W_S 68
-#define VR4300_OP_CVT_W_W 69
-#define VR4300_OP_C_cond_D 70
-#define VR4300_OP_C_cond_L 71
-#define VR4300_OP_C_cond_S 72
-#define VR4300_OP_C_cond_W 73
-#define VR4300_OP_DADD 74
-#define VR4300_OP_DADDI 75
-#define VR4300_OP_DADDIU 76
-#define VR4300_OP_DADDU 77
-#define VR4300_OP_DCFC0 78
-#define VR4300_OP_DCFC1 79
-#define VR4300_OP_DCFC2 80
-#define VR4300_OP_DCTC0 81
-#define VR4300_OP_DCTC1 82
-#define VR4300_OP_DCTC2 83
-#define VR4300_OP_DDIV 84
-#define VR4300_OP_DDIVU 85
-#define VR4300_OP_DIV 86
-#define VR4300_OP_DIVU 87
-#define VR4300_OP_DIV_D 88
-#define VR4300_OP_DIV_L 89
-#define VR4300_OP_DIV_S 90
-#define VR4300_OP_DIV_W 91
-#define VR4300_OP_DMFC0 92
-#define VR4300_OP_DMFC1 93
-#define VR4300_OP_DMFC2 94
-#define VR4300_OP_DMTC0 95
-#define VR4300_OP_DMTC1 96
-#define VR4300_OP_DMTC2 97
-#define VR4300_OP_DMULT 98
-#define VR4300_OP_DMULTU 99
-#define VR4300_OP_DSLL 100
-#define VR4300_OP_DSLL32 101
-#define VR4300_OP_DSLLV 102
-#define VR4300_OP_DSRA 103
-#define VR4300_OP_DSRA32 104
-#define VR4300_OP_DSRAV 105
-#define VR4300_OP_DSRL 106
-#define VR4300_OP_DSRL32 107
-#define VR4300_OP_DSRLV 108
-#define VR4300_OP_DSUB 109
-#define VR4300_OP_DSUBU 110
-#define VR4300_OP_ERET 111
-#define VR4300_OP_FLOOR_L_D 112
-#define VR4300_OP_FLOOR_L_L 113
-#define VR4300_OP_FLOOR_L_S 114
-#define VR4300_OP_FLOOR_L_W 115
-#define VR4300_OP_FLOOR_W_D 116
-#define VR4300_OP_FLOOR_W_L 117
-#define VR4300_OP_FLOOR_W_S 118
-#define VR4300_OP_FLOOR_W_W 119
-#define VR4300_OP_J 120
-#define VR4300_OP_JAL 121
-#define VR4300_OP_JALR 122
-#define VR4300_OP_JR 123
-#define VR4300_OP_LB 124
-#define VR4300_OP_LBU 125
-#define VR4300_OP_LD 126
-#define VR4300_OP_LDC1 127
-#define VR4300_OP_LDC2 128
-#define VR4300_OP_LDL 129
-#define VR4300_OP_LDR 130
-#define VR4300_OP_LH 131
-#define VR4300_OP_LHU 132
-#define VR4300_OP_LL 133
-#define VR4300_OP_LLD 134
-#define VR4300_OP_LUI 135
-#define VR4300_OP_LW 136
-#define VR4300_OP_LWC1 137
-#define VR4300_OP_LWC2 138
-#define VR4300_OP_LWL 139
-#define VR4300_OP_LWR 140
-#define VR4300_OP_LWU 141
-#define VR4300_OP_MFC0 142
-#define VR4300_OP_MFC1 143
-#define VR4300_OP_MFC2 144
-#define VR4300_OP_MFHI 145
-#define VR4300_OP_MFLO 146
-#define VR4300_OP_MOV_D 147
-#define VR4300_OP_MOV_L 148
-#define VR4300_OP_MOV_S 149
-#define VR4300_OP_MOV_W 150
-#define VR4300_OP_MTC0 151
-#define VR4300_OP_MTC1 152
-#define VR4300_OP_MTC2 153
-#define VR4300_OP_MTHI 154
-#define VR4300_OP_MTLO 155
-#define VR4300_OP_MULT 156
-#define VR4300_OP_MULTU 157
-#define VR4300_OP_MUL_D 158
-#define VR4300_OP_MUL_L 159
-#define VR4300_OP_MUL_S 160
-#define VR4300_OP_MUL_W 161
-#define VR4300_OP_NEG_D 162
-#define VR4300_OP_NEG_L 163
-#define VR4300_OP_NEG_S 164
-#define VR4300_OP_NEG_W 165
-#define VR4300_OP_NOR 166
-#define VR4300_OP_OR 167
-#define VR4300_OP_ORI 168
-#define VR4300_OP_ROUND_L_D 169
-#define VR4300_OP_ROUND_L_L 170
-#define VR4300_OP_ROUND_L_S 171
-#define VR4300_OP_ROUND_L_W 172
-#define VR4300_OP_ROUND_W_D 173
-#define VR4300_OP_ROUND_W_L 174
-#define VR4300_OP_ROUND_W_S 175
-#define VR4300_OP_ROUND_W_W 176
-#define VR4300_OP_SB 177
-#define VR4300_OP_SC 178
-#define VR4300_OP_SCD 179
-#define VR4300_OP_SD 180
-#define VR4300_OP_SDC1 181
-#define VR4300_OP_SDC2 182
-#define VR4300_OP_SDL 183
-#define VR4300_OP_SDR 184
-#define VR4300_OP_SH 185
-#define VR4300_OP_SLL 186
-#define VR4300_OP_SLLV 187
-#define VR4300_OP_SLT 188
-#define VR4300_OP_SLTI 189
-#define VR4300_OP_SLTIU 190
-#define VR4300_OP_SLTU 191
-#define VR4300_OP_SQRT_D 192
-#define VR4300_OP_SQRT_L 193
-#define VR4300_OP_SQRT_S 194
-#define VR4300_OP_SQRT_W 195
-#define VR4300_OP_SRA 196
-#define VR4300_OP_SRAV 197
-#define VR4300_OP_SRL 198
-#define VR4300_OP_SRLV 199
-#define VR4300_OP_SUB 200
-#define VR4300_OP_SUBU 201
-#define VR4300_OP_SUB_D 202
-#define VR4300_OP_SUB_L 203
-#define VR4300_OP_SUB_S 204
-#define VR4300_OP_SUB_W 205
-#define VR4300_OP_SW 206
-#define VR4300_OP_SWC1 207
-#define VR4300_OP_SWC2 208
-#define VR4300_OP_SWL 209
-#define VR4300_OP_SWR 210
-#define VR4300_OP_SYNC 211
-#define VR4300_OP_SYSCALL 212
-#define VR4300_OP_TEQ 213
-#define VR4300_OP_TEQI 214
-#define VR4300_OP_TGE 215
-#define VR4300_OP_TGEI 216
-#define VR4300_OP_TGEIU 217
-#define VR4300_OP_TGEU 218
-#define VR4300_OP_TLBP 219
-#define VR4300_OP_TLBR 220
-#define VR4300_OP_TLBWI 221
-#define VR4300_OP_TLBWR 222
-#define VR4300_OP_TLT 223
-#define VR4300_OP_TLTI 224
-#define VR4300_OP_TLTIU 225
-#define VR4300_OP_TLTU 226
-#define VR4300_OP_TNE 227
-#define VR4300_OP_TNEI 228
-#define VR4300_OP_TRUNC_L_D 229
-#define VR4300_OP_TRUNC_L_L 230
-#define VR4300_OP_TRUNC_L_S 231
-#define VR4300_OP_TRUNC_L_W 232
-#define VR4300_OP_TRUNC_W_D 233
-#define VR4300_OP_TRUNC_W_L 234
-#define VR4300_OP_TRUNC_W_S 235
-#define VR4300_OP_TRUNC_W_W 236
-#define VR4300_OP_XOR 237
-#define VR4300_OP_XORI 238
+#define VR4300_OP_BC3F 22
+#define VR4300_OP_BC3FL 23
+#define VR4300_OP_BC3T 24
+#define VR4300_OP_BC3TL 25
+#define VR4300_OP_BEQ 26
+#define VR4300_OP_BEQL 27
+#define VR4300_OP_BGEZ 28
+#define VR4300_OP_BGEZAL 29
+#define VR4300_OP_BGEZALL 30
+#define VR4300_OP_BGEZL 31
+#define VR4300_OP_BGTZ 32
+#define VR4300_OP_BGTZL 33
+#define VR4300_OP_BLEZ 34
+#define VR4300_OP_BLEZL 35
+#define VR4300_OP_BLTZ 36
+#define VR4300_OP_BLTZAL 37
+#define VR4300_OP_BLTZALL 38
+#define VR4300_OP_BLTZL 39
+#define VR4300_OP_BNE 40
+#define VR4300_OP_BNEL 41
+#define VR4300_OP_BREAK 42
+#define VR4300_OP_CACHE 43
+#define VR4300_OP_CEIL_L_D 44
+#define VR4300_OP_CEIL_L_L 45
+#define VR4300_OP_CEIL_L_S 46
+#define VR4300_OP_CEIL_L_W 47
+#define VR4300_OP_CEIL_W_D 48
+#define VR4300_OP_CEIL_W_L 49
+#define VR4300_OP_CEIL_W_S 50
+#define VR4300_OP_CEIL_W_W 51
+#define VR4300_OP_CFC0 52
+#define VR4300_OP_CFC1 53
+#define VR4300_OP_CFC2 54
+#define VR4300_OP_CFC3 55
+#define VR4300_OP_CTC0 56
+#define VR4300_OP_CTC1 57
+#define VR4300_OP_CTC2 58
+#define VR4300_OP_CTC3 59
+#define VR4300_OP_CVT_D_D 60
+#define VR4300_OP_CVT_D_L 61
+#define VR4300_OP_CVT_D_S 62
+#define VR4300_OP_CVT_D_W 63
+#define VR4300_OP_CVT_L_D 64
+#define VR4300_OP_CVT_L_L 65
+#define VR4300_OP_CVT_L_S 66
+#define VR4300_OP_CVT_L_W 67
+#define VR4300_OP_CVT_S_D 68
+#define VR4300_OP_CVT_S_L 69
+#define VR4300_OP_CVT_S_S 70
+#define VR4300_OP_CVT_S_W 71
+#define VR4300_OP_CVT_W_D 72
+#define VR4300_OP_CVT_W_L 73
+#define VR4300_OP_CVT_W_S 74
+#define VR4300_OP_CVT_W_W 75
+#define VR4300_OP_C_cond_D 76
+#define VR4300_OP_C_cond_L 77
+#define VR4300_OP_C_cond_S 78
+#define VR4300_OP_C_cond_W 79
+#define VR4300_OP_DADD 80
+#define VR4300_OP_DADDI 81
+#define VR4300_OP_DADDIU 82
+#define VR4300_OP_DADDU 83
+#define VR4300_OP_DCFC0 84
+#define VR4300_OP_DCFC1 85
+#define VR4300_OP_DCFC2 86
+#define VR4300_OP_DCFC3 87
+#define VR4300_OP_DCTC0 88
+#define VR4300_OP_DCTC1 89
+#define VR4300_OP_DCTC2 90
+#define VR4300_OP_DCTC3 91
+#define VR4300_OP_DDIV 92
+#define VR4300_OP_DDIVU 93
+#define VR4300_OP_DIV 94
+#define VR4300_OP_DIVU 95
+#define VR4300_OP_DIV_D 96
+#define VR4300_OP_DIV_L 97
+#define VR4300_OP_DIV_S 98
+#define VR4300_OP_DIV_W 99
+#define VR4300_OP_DMFC0 100
+#define VR4300_OP_DMFC1 101
+#define VR4300_OP_DMFC2 102
+#define VR4300_OP_DMFC3 103
+#define VR4300_OP_DMTC0 104
+#define VR4300_OP_DMTC1 105
+#define VR4300_OP_DMTC2 106
+#define VR4300_OP_DMTC3 107
+#define VR4300_OP_DMULT 108
+#define VR4300_OP_DMULTU 109
+#define VR4300_OP_DSLL 110
+#define VR4300_OP_DSLL32 111
+#define VR4300_OP_DSLLV 112
+#define VR4300_OP_DSRA 113
+#define VR4300_OP_DSRA32 114
+#define VR4300_OP_DSRAV 115
+#define VR4300_OP_DSRL 116
+#define VR4300_OP_DSRL32 117
+#define VR4300_OP_DSRLV 118
+#define VR4300_OP_DSUB 119
+#define VR4300_OP_DSUBU 120
+#define VR4300_OP_ERET 121
+#define VR4300_OP_FLOOR_L_D 122
+#define VR4300_OP_FLOOR_L_L 123
+#define VR4300_OP_FLOOR_L_S 124
+#define VR4300_OP_FLOOR_L_W 125
+#define VR4300_OP_FLOOR_W_D 126
+#define VR4300_OP_FLOOR_W_L 127
+#define VR4300_OP_FLOOR_W_S 128
+#define VR4300_OP_FLOOR_W_W 129
+#define VR4300_OP_J 130
+#define VR4300_OP_JAL 131
+#define VR4300_OP_JALR 132
+#define VR4300_OP_JR 133
+#define VR4300_OP_LB 134
+#define VR4300_OP_LBU 135
+#define VR4300_OP_LD 136
+#define VR4300_OP_LDC1 137
+#define VR4300_OP_LDC2 138
+#define VR4300_OP_LDL 139
+#define VR4300_OP_LDR 140
+#define VR4300_OP_LH 141
+#define VR4300_OP_LHU 142
+#define VR4300_OP_LL 143
+#define VR4300_OP_LLD 144
+#define VR4300_OP_LUI 145
+#define VR4300_OP_LW 146
+#define VR4300_OP_LWC1 147
+#define VR4300_OP_LWC2 148
+#define VR4300_OP_LWL 149
+#define VR4300_OP_LWR 150
+#define VR4300_OP_LWU 151
+#define VR4300_OP_MFC0 152
+#define VR4300_OP_MFC1 153
+#define VR4300_OP_MFC2 154
+#define VR4300_OP_MFC3 155
+#define VR4300_OP_MFHI 156
+#define VR4300_OP_MFLO 157
+#define VR4300_OP_MOV_D 158
+#define VR4300_OP_MOV_L 159
+#define VR4300_OP_MOV_S 160
+#define VR4300_OP_MOV_W 161
+#define VR4300_OP_MTC0 162
+#define VR4300_OP_MTC1 163
+#define VR4300_OP_MTC2 164
+#define VR4300_OP_MTC3 165
+#define VR4300_OP_MTHI 166
+#define VR4300_OP_MTLO 167
+#define VR4300_OP_MULT 168
+#define VR4300_OP_MULTU 169
+#define VR4300_OP_MUL_D 170
+#define VR4300_OP_MUL_L 171
+#define VR4300_OP_MUL_S 172
+#define VR4300_OP_MUL_W 173
+#define VR4300_OP_NEG_D 174
+#define VR4300_OP_NEG_L 175
+#define VR4300_OP_NEG_S 176
+#define VR4300_OP_NEG_W 177
+#define VR4300_OP_NOR 178
+#define VR4300_OP_OR 179
+#define VR4300_OP_ORI 180
+#define VR4300_OP_ROUND_L_D 181
+#define VR4300_OP_ROUND_L_L 182
+#define VR4300_OP_ROUND_L_S 183
+#define VR4300_OP_ROUND_L_W 184
+#define VR4300_OP_ROUND_W_D 185
+#define VR4300_OP_ROUND_W_L 186
+#define VR4300_OP_ROUND_W_S 187
+#define VR4300_OP_ROUND_W_W 188
+#define VR4300_OP_SB 189
+#define VR4300_OP_SC 190
+#define VR4300_OP_SCD 191
+#define VR4300_OP_SD 192
+#define VR4300_OP_SDC1 193
+#define VR4300_OP_SDC2 194
+#define VR4300_OP_SDL 195
+#define VR4300_OP_SDR 196
+#define VR4300_OP_SH 197
+#define VR4300_OP_SLL 198
+#define VR4300_OP_SLLV 199
+#define VR4300_OP_SLT 200
+#define VR4300_OP_SLTI 201
+#define VR4300_OP_SLTIU 202
+#define VR4300_OP_SLTU 203
+#define VR4300_OP_SQRT_D 204
+#define VR4300_OP_SQRT_L 205
+#define VR4300_OP_SQRT_S 206
+#define VR4300_OP_SQRT_W 207
+#define VR4300_OP_SRA 208
+#define VR4300_OP_SRAV 209
+#define VR4300_OP_SRL 210
+#define VR4300_OP_SRLV 211
+#define VR4300_OP_SUB 212
+#define VR4300_OP_SUBU 213
+#define VR4300_OP_SUB_D 214
+#define VR4300_OP_SUB_L 215
+#define VR4300_OP_SUB_S 216
+#define VR4300_OP_SUB_W 217
+#define VR4300_OP_SW 218
+#define VR4300_OP_SWC1 219
+#define VR4300_OP_SWC2 220
+#define VR4300_OP_SWL 221
+#define VR4300_OP_SWR 222
+#define VR4300_OP_SYNC 223
+#define VR4300_OP_SYSCALL 224
+#define VR4300_OP_TEQ 225
+#define VR4300_OP_TEQI 226
+#define VR4300_OP_TGE 227
+#define VR4300_OP_TGEI 228
+#define VR4300_OP_TGEIU 229
+#define VR4300_OP_TGEU 230
+#define VR4300_OP_TLBP 231
+#define VR4300_OP_TLBR 232
+#define VR4300_OP_TLBWI 233
+#define VR4300_OP_TLBWR 234
+#define VR4300_OP_TLT 235
+#define VR4300_OP_TLTI 236
+#define VR4300_OP_TLTIU 237
+#define VR4300_OP_TLTU 238
+#define VR4300_OP_TNE 239
+#define VR4300_OP_TNEI 240
+#define VR4300_OP_TRUNC_L_D 241
+#define VR4300_OP_TRUNC_L_L 242
+#define VR4300_OP_TRUNC_L_S 243
+#define VR4300_OP_TRUNC_L_W 244
+#define VR4300_OP_TRUNC_W_D 245
+#define VR4300_OP_TRUNC_W_L 246
+#define VR4300_OP_TRUNC_W_S 247
+#define VR4300_OP_TRUNC_W_W 248
+#define VR4300_OP_XOR 249
+#define VR4300_OP_XORI 250
 
 bool decode_instruction(vr4300_instruction inst, jit_instr *instr);
 #endif

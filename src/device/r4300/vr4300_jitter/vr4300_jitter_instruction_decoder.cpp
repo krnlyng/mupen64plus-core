@@ -242,6 +242,42 @@ void decode_BC1TL(int f, jit_instr *instr) {
     instr->x = 1;
     instr->name = "BC1TL";
 }
+void decode_BC3F(int f, jit_instr *instr) {
+    instr->operation = VR4300_OP_BC3F;
+    instr->is_branch_or_jump = true;
+    instr->f = f;
+    instr->has_f = true;
+    instr->has_x = true;
+    instr->x = 3;
+    instr->name = "BC3F";
+}
+void decode_BC3FL(int f, jit_instr *instr) {
+    instr->operation = VR4300_OP_BC3FL;
+    instr->is_branch_or_jump = true;
+    instr->f = f;
+    instr->has_f = true;
+    instr->has_x = true;
+    instr->x = 3;
+    instr->name = "BC3FL";
+}
+void decode_BC3T(int f, jit_instr *instr) {
+    instr->operation = VR4300_OP_BC3T;
+    instr->is_branch_or_jump = true;
+    instr->f = f;
+    instr->has_f = true;
+    instr->has_x = true;
+    instr->x = 3;
+    instr->name = "BC3T";
+}
+void decode_BC3TL(int f, jit_instr *instr) {
+    instr->operation = VR4300_OP_BC3TL;
+    instr->is_branch_or_jump = true;
+    instr->f = f;
+    instr->has_f = true;
+    instr->has_x = true;
+    instr->x = 3;
+    instr->name = "BC3TL";
+}
 void decode_BEQ(int f, int t, int s, jit_instr *instr) {
     instr->operation = VR4300_OP_BEQ;
     instr->is_branch_or_jump = true;
@@ -520,6 +556,16 @@ void decode_CFC2(int d, int t, jit_instr *instr) {
     instr->x = 2;
     instr->name = "CFC2";
 }
+void decode_CFC3(int d, int t, jit_instr *instr) {
+    instr->operation = VR4300_OP_CFC3;
+    instr->d = d;
+    instr->has_d = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->has_x = true;
+    instr->x = 3;
+    instr->name = "CFC3";
+}
 void decode_CTC0(int d, int t, jit_instr *instr) {
     instr->operation = VR4300_OP_CTC0;
     instr->d = d;
@@ -549,6 +595,16 @@ void decode_CTC2(int d, int t, jit_instr *instr) {
     instr->has_x = true;
     instr->x = 2;
     instr->name = "CTC2";
+}
+void decode_CTC3(int d, int t, jit_instr *instr) {
+    instr->operation = VR4300_OP_CTC3;
+    instr->d = d;
+    instr->has_d = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->has_x = true;
+    instr->x = 3;
+    instr->name = "CTC3";
 }
 void decode_CVT_D_D(int d, int s, jit_instr *instr) {
     instr->operation = VR4300_OP_CVT_D_D;
@@ -828,6 +884,16 @@ void decode_DCFC2(int d, int t, jit_instr *instr) {
     instr->x = 2;
     instr->name = "DCFC2";
 }
+void decode_DCFC3(int d, int t, jit_instr *instr) {
+    instr->operation = VR4300_OP_DCFC3;
+    instr->d = d;
+    instr->has_d = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->has_x = true;
+    instr->x = 3;
+    instr->name = "DCFC3";
+}
 void decode_DCTC0(int d, int t, jit_instr *instr) {
     instr->operation = VR4300_OP_DCTC0;
     instr->d = d;
@@ -857,6 +923,16 @@ void decode_DCTC2(int d, int t, jit_instr *instr) {
     instr->has_x = true;
     instr->x = 2;
     instr->name = "DCTC2";
+}
+void decode_DCTC3(int d, int t, jit_instr *instr) {
+    instr->operation = VR4300_OP_DCTC3;
+    instr->d = d;
+    instr->has_d = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->has_x = true;
+    instr->x = 3;
+    instr->name = "DCTC3";
 }
 void decode_DDIV(int t, int s, jit_instr *instr) {
     instr->operation = VR4300_OP_DDIV;
@@ -968,6 +1044,16 @@ void decode_DMFC2(int d, int t, jit_instr *instr) {
     instr->x = 2;
     instr->name = "DMFC2";
 }
+void decode_DMFC3(int d, int t, jit_instr *instr) {
+    instr->operation = VR4300_OP_DMFC3;
+    instr->d = d;
+    instr->has_d = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->has_x = true;
+    instr->x = 3;
+    instr->name = "DMFC3";
+}
 void decode_DMTC0(int d, int t, jit_instr *instr) {
     instr->operation = VR4300_OP_DMTC0;
     instr->d = d;
@@ -997,6 +1083,16 @@ void decode_DMTC2(int d, int t, jit_instr *instr) {
     instr->has_x = true;
     instr->x = 2;
     instr->name = "DMTC2";
+}
+void decode_DMTC3(int d, int t, jit_instr *instr) {
+    instr->operation = VR4300_OP_DMTC3;
+    instr->d = d;
+    instr->has_d = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->has_x = true;
+    instr->x = 3;
+    instr->name = "DMTC3";
 }
 void decode_DMULT(int t, int s, jit_instr *instr) {
     instr->operation = VR4300_OP_DMULT;
@@ -1454,6 +1550,16 @@ void decode_MFC2(int d, int t, jit_instr *instr) {
     instr->x = 2;
     instr->name = "MFC2";
 }
+void decode_MFC3(int d, int t, jit_instr *instr) {
+    instr->operation = VR4300_OP_MFC3;
+    instr->d = d;
+    instr->has_d = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->has_x = true;
+    instr->x = 3;
+    instr->name = "MFC3";
+}
 void decode_MFHI(int d, jit_instr *instr) {
     instr->operation = VR4300_OP_MFHI;
     instr->d = d;
@@ -1535,6 +1641,16 @@ void decode_MTC2(int d, int t, jit_instr *instr) {
     instr->has_x = true;
     instr->x = 2;
     instr->name = "MTC2";
+}
+void decode_MTC3(int d, int t, jit_instr *instr) {
+    instr->operation = VR4300_OP_MTC3;
+    instr->d = d;
+    instr->has_d = true;
+    instr->t = t;
+    instr->has_t = true;
+    instr->has_x = true;
+    instr->x = 3;
+    instr->name = "MTC3";
 }
 void decode_MTHI(int s, jit_instr *instr) {
     instr->operation = VR4300_OP_MTHI;
@@ -2377,6 +2493,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
         case 1212153856:
             decode_CFC2(inst.CFC2_d, inst.CFC2_t, instr);
             return true;
+        case 1279262720:
+            decode_CFC3(inst.CFC3_d, inst.CFC3_t, instr);
+            return true;
         case 1086324736:
             decode_CTC0(inst.CTC0_d, inst.CTC0_t, instr);
             return true;
@@ -2385,6 +2504,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
             return true;
         case 1220542464:
             decode_CTC2(inst.CTC2_d, inst.CTC2_t, instr);
+            return true;
+        case 1287651328:
+            decode_CTC3(inst.CTC3_d, inst.CTC3_t, instr);
             return true;
         case 1080033280:
             decode_DCFC0(inst.DCFC0_d, inst.DCFC0_t, instr);
@@ -2395,6 +2517,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
         case 1214251008:
             decode_DCFC2(inst.DCFC2_d, inst.DCFC2_t, instr);
             return true;
+        case 1281359872:
+            decode_DCFC3(inst.DCFC3_d, inst.DCFC3_t, instr);
+            return true;
         case 1088421888:
             decode_DCTC0(inst.DCTC0_d, inst.DCTC0_t, instr);
             return true;
@@ -2403,6 +2528,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
             return true;
         case 1222639616:
             decode_DCTC2(inst.DCTC2_d, inst.DCTC2_t, instr);
+            return true;
+        case 1289748480:
+            decode_DCTC3(inst.DCTC3_d, inst.DCTC3_t, instr);
             return true;
         case 1075838976:
             decode_DMFC0(inst.DMFC0_d, inst.DMFC0_t, instr);
@@ -2413,6 +2541,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
         case 1210056704:
             decode_DMFC2(inst.DMFC2_d, inst.DMFC2_t, instr);
             return true;
+        case 1277165568:
+            decode_DMFC3(inst.DMFC3_d, inst.DMFC3_t, instr);
+            return true;
         case 1084227584:
             decode_DMTC0(inst.DMTC0_d, inst.DMTC0_t, instr);
             return true;
@@ -2421,6 +2552,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
             return true;
         case 1218445312:
             decode_DMTC2(inst.DMTC2_d, inst.DMTC2_t, instr);
+            return true;
+        case 1285554176:
+            decode_DMTC3(inst.DMTC3_d, inst.DMTC3_t, instr);
             return true;
         case 1073741824:
             decode_MFC0(inst.MFC0_d, inst.MFC0_t, instr);
@@ -2431,6 +2565,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
         case 1207959552:
             decode_MFC2(inst.MFC2_d, inst.MFC2_t, instr);
             return true;
+        case 1275068416:
+            decode_MFC3(inst.MFC3_d, inst.MFC3_t, instr);
+            return true;
         case 1082130432:
             decode_MTC0(inst.MTC0_d, inst.MTC0_t, instr);
             return true;
@@ -2439,6 +2576,9 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
             return true;
         case 1216348160:
             decode_MTC2(inst.MTC2_d, inst.MTC2_t, instr);
+            return true;
+        case 1283457024:
+            decode_MTC3(inst.MTC3_d, inst.MTC3_t, instr);
             return true;
     };
     switch(inst.raw & (OP_MASK_0_10 | OP_MASK_26_31)) {
@@ -2937,6 +3077,18 @@ bool decode_instruction(vr4300_instruction inst, jit_instr *instr) {
             return true;
         case 1157693440:
             decode_BC1T(inst.BC1T_f, instr);
+            return true;
+        case 1291976704:
+            decode_BC3FL(inst.BC3FL_f, instr);
+            return true;
+        case 1291845632:
+            decode_BC3F(inst.BC3F_f, instr);
+            return true;
+        case 1292042240:
+            decode_BC3TL(inst.BC3TL_f, instr);
+            return true;
+        case 1291911168:
+            decode_BC3T(inst.BC3T_f, instr);
             return true;
     };
     switch(inst.raw & (OP_MASK_21_31)) {
