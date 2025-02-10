@@ -478,17 +478,24 @@ private:
 
         void div_core(struct jit_instr *op, const RCOpArg &edx, const RCOpArg &eax, const RCOpArg &Rs, const RCOpArg &Rt, bool un_signed);
 
+        void compile_fpu_unimplemented_check_RSCRATCH(struct jit_instr *op);
         void compile_fpu_reset_cause(struct jit_instr *op);
         void compile_fpu_reset_exceptions(struct jit_instr *op);
         void compile_fpu_check_exceptions(struct jit_instr *op, bool convert);
-        void compile_fpu_check_input_float(struct jit_instr *op, const RCX64Reg &reg);
-        void compile_fpu_check_input_double(struct jit_instr *op, const RCX64Reg &reg);
-        void compile_fpu_check_input_float(struct jit_instr *op, const RCOpArg &input);
-        void compile_fpu_check_input_double(struct jit_instr *op, const RCOpArg &input);
+        void compile_fpu_check_input_float(struct jit_instr *op);
+        void compile_fpu_check_input_double(struct jit_instr *op);
+        void compile_fpu_check_input_float_conv_32(struct jit_instr *op);
+        void compile_fpu_check_input_double_conv_32(struct jit_instr *op);
+        void compile_fpu_check_input_float_conv_64(struct jit_instr *op);
+        void compile_fpu_check_input_double_conv_64(struct jit_instr *op);
+        void compile_fpu_check_inputs_float(struct jit_instr *op);
+        void compile_fpu_check_inputs_double(struct jit_instr *op);
         void compile_fpu_check_output_float(struct jit_instr *op);
         void compile_fpu_check_output_double(struct jit_instr *op);
         void compile_fpu_store_output_float_for_check(struct jit_instr *op, const RCX64Reg &reg);
         void compile_fpu_store_output_double_for_check(struct jit_instr *op, const RCX64Reg &reg);
+        void compile_fpu_inexact_check_32(struct jit_instr *op);
+        void compile_fpu_inexact_check_64(struct jit_instr *op);
 
         void recompile_instruction(struct jit_instr *op);
         void embed_valid_block_check(u32 address, bool force_check, bool delay_slot = false, bool update_cc = false);
