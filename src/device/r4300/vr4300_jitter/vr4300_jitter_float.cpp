@@ -114,22 +114,6 @@ void VR4300_Jitter::compile_fpu_check_exceptions(struct jit_instr *op, bool conv
         MOV(32, R(RSCRATCH), R(ABI_RETURN));
     }
     //AND(32, R(RSCRATCH), Imm32(FE_ALL_EXCEPT)); // this is done in glibc
-#define TEST_AND_SET_EXCEPTION_2(exception_host, exception_target) \
-    do { \
-        TEST(32, R(RSCRATCH), Imm32(FE_ ##exception_host)); \
-        FixupBranch no_ ##exception_host = J_CC(CC_Z, XEmitter::Jump::Near); \
-        OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_ ## exception_target ## _BIT)); \
-        TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_ENABLE_ ## exception_target ## _BIT)); \
-        FixupBranch no_ ##exception_target ## _fpe = J_CC(CC_Z, XEmitter::Jump::Near); \
-        MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE)); \
-        compile_exception_general(op); \
-        SetJumpTarget(no_ ##exception_target ## _fpe); \
-        OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_ ## exception_target ## _BIT)); \
-        SetJumpTarget(no_ ##exception_host); \
-    } while (0)
-
-#define TEST_AND_SET_EXCEPTION(exception) \
-    TEST_AND_SET_EXCEPTION_2(exception, exception)
 
     if (convert) {
         TEST(32, R(RSCRATCH), Imm32(FE_INVALID));
@@ -142,7 +126,7 @@ void VR4300_Jitter::compile_fpu_check_exceptions(struct jit_instr *op, bool conv
 
     TEST(32, R(RSCRATCH), Imm32(FE_UNDERFLOW));
     FixupBranch no_UNDERFLOW_host = J_CC(CC_Z, XEmitter::Jump::Near);
-    TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLUSH_SUBNORMALS));
+    TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLUSH_SUBNORMALS_BIT));
     FixupBranch no_flush_subnormals = J_CC(CC_Z);
     TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_ENABLE_UNDERFLOW_BIT));
     FixupBranch underflow = J_CC(CC_NZ);
@@ -159,11 +143,35 @@ void VR4300_Jitter::compile_fpu_check_exceptions(struct jit_instr *op, bool conv
     SetJumpTarget(none);
     SetJumpTarget(no_UNDERFLOW_host);
 
+#define TEST_AND_SET_EXCEPTION_2(exception_host, exception_target) \
+    do { \
+        TEST(32, R(RSCRATCH), Imm32(FE_ ##exception_host)); \
+        FixupBranch no_ ##exception_host = J_CC(CC_Z, XEmitter::Jump::Near); \
+        OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_ ## exception_target ## _BIT)); \
+        TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_ENABLE_ ## exception_target ## _BIT)); \
+        FixupBranch no_ ##exception_target ## _fpe = J_CC(CC_Z, XEmitter::Jump::Near); \
+        MOV(32, R(RSCRATCH2), Imm32(1)); /* exception */ \
+        FixupBranch exit_ ##exception_target = J(); \
+        SetJumpTarget(no_ ##exception_target ## _fpe); \
+        OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_ ## exception_target ## _BIT)); \
+        SetJumpTarget(no_ ##exception_host); \
+        SetJumpTarget(exit_ ##exception_target); \
+    } while (0)
+
+#define TEST_AND_SET_EXCEPTION(exception) \
+    TEST_AND_SET_EXCEPTION_2(exception, exception)
+
+    MOV(32, R(RSCRATCH2), Imm32(0));
     TEST_AND_SET_EXCEPTION(DIVBYZERO);
     TEST_AND_SET_EXCEPTION(INEXACT);
     TEST_AND_SET_EXCEPTION(UNDERFLOW);
     TEST_AND_SET_EXCEPTION(OVERFLOW);
     TEST_AND_SET_EXCEPTION_2(INVALID, INVALIDOP);
+    CMP(32, R(RSCRATCH2), Imm32(1));
+    FixupBranch no_fpe = J_CC(CC_NE, XEmitter::Jump::Near);
+    MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE));
+    compile_exception_general(op);
+    SetJumpTarget(no_fpe);
 #endif
 }
 
@@ -367,7 +375,7 @@ bool vr4300_jitter_check_output_float(uint32_t* fcr31, int32_t value, int32_t *r
     switch (fpclassify(fvalue))
     {
     case FP_SUBNORMAL:
-        if (!((*fcr31) & FCR31_FLUSH_SUBNORMALS) || ((*fcr31) & FCR31_ENABLE_UNDERFLOW_BIT) || ((*fcr31) & FCR31_ENABLE_INEXACT_BIT)) {
+        if (!((*fcr31) & FCR31_FLUSH_SUBNORMALS_BIT) || ((*fcr31) & FCR31_ENABLE_UNDERFLOW_BIT) || ((*fcr31) & FCR31_ENABLE_INEXACT_BIT)) {
             (*fcr31) |= FCR31_CAUSE_UNIMPLOP_BIT;
             *res = value;
             return true;
@@ -399,7 +407,7 @@ bool vr4300_jitter_check_output_double(uint32_t* fcr31, int64_t value, int64_t *
     switch (fpclassify(fvalue))
     {
     case FP_SUBNORMAL:
-        if (!((*fcr31) & FCR31_FLUSH_SUBNORMALS) || ((*fcr31) & FCR31_ENABLE_UNDERFLOW_BIT) || ((*fcr31) & FCR31_ENABLE_INEXACT_BIT)) {
+        if (!((*fcr31) & FCR31_FLUSH_SUBNORMALS_BIT) || ((*fcr31) & FCR31_ENABLE_UNDERFLOW_BIT) || ((*fcr31) & FCR31_ENABLE_INEXACT_BIT)) {
             (*fcr31) |= FCR31_CAUSE_UNIMPLOP_BIT;
             *res = value;
             return true;
@@ -3063,7 +3071,7 @@ void VR4300_Jitter::recompile_CTC1(struct jit_instr *op)
             STMXCSR(HOTSTATE_VAR(tmp));
             MOV(32, R(scratch), HOTSTATE_VAR(tmp));
 
-            AND(32, R(scratch), Imm32(0x00009FFF));
+            AND(32, R(scratch), Imm32(0x00001FFF));
 
             PERFORM_FLOAT_OPERATION_WITH_ROUNDING_MODE({
                 // round
@@ -3078,6 +3086,15 @@ void VR4300_Jitter::recompile_CTC1(struct jit_instr *op)
                 // floor
                 OR(32, R(scratch), Imm32(1 << 13));
             });
+
+            TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(1 << 1));
+            FixupBranch no_fcr31_2 = J_CC(CC_Z);
+            TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLUSH_SUBNORMALS_BIT));
+            FixupBranch fcr31_flush_subnormals = J_CC(CC_NZ);
+            SetJumpTarget(no_fcr31_2);
+            // flush zero on
+            OR(32, R(scratch), Imm32(1 << 15));
+            SetJumpTarget(fcr31_flush_subnormals);
 
             MOV(32, HOTSTATE_VAR(tmp), R(scratch));
             LDMXCSR(HOTSTATE_VAR(tmp));

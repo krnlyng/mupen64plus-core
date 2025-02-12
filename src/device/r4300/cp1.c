@@ -24,10 +24,9 @@
 
 #include "cp0.h"
 #include "cp1.h"
+#include "fpu.h"
 
 #include "new_dynarec/new_dynarec.h"
-
-#define FCR31_FS_BIT UINT32_C(0x1000000)
 
 #ifdef M64P_BIG_ENDIAN
 #define DOUBLE_HALF_XOR 1
@@ -158,7 +157,7 @@ void update_x86_rounding_mode(struct cp1* cp1)
 #ifdef OSAL_SSE
     uint32_t flush_mode;
     if (fcr31 & 2)
-        flush_mode = (fcr31 & FCR31_FS_BIT) ? _MM_FLUSH_ZERO_OFF : _MM_FLUSH_ZERO_ON;
+        flush_mode = (fcr31 & FCR31_FLUSH_SUBNORMALS_BIT) ? _MM_FLUSH_ZERO_OFF : _MM_FLUSH_ZERO_ON;
     else
         flush_mode = _MM_FLUSH_ZERO_ON;
 

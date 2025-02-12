@@ -844,6 +844,8 @@ void VR4300_Jitter::Init(void)
   DebugMessage(M64MSG_INFO, "Init vr4300 jitter");
   Common::JitRegister::Init("/tmp");
 
+  _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_OFF);
+
 #if DISABLE_GPR_REG_CACHE
   m_r4300->recompiler_hot_state.gprs_tmp_ptr = m_r4300->recompiler_hot_state.regs;
 #else

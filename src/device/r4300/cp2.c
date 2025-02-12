@@ -29,8 +29,6 @@
 #include "new_dynarec/new_dynarec.h"
 #include "vr4300_jitter/vr4300_jitter.h"
 
-#define FCR31_FS_BIT UINT32_C(0x2000000)
-
 void init_cp2(struct cp2* cp2, struct recompiler_hot_state* recompiler_hot_state)
 {
 #if defined(NEW_DYNAREC) || defined(VR4300_JITTER)
