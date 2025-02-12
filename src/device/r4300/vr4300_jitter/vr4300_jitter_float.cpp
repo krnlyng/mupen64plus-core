@@ -190,19 +190,23 @@ void VR4300_Jitter::compile_fpu_store_output_double_for_check(struct jit_instr *
 }
 
 bool qnan(double value) {
-    uint64_t ivalue = *reinterpret_cast<uint32_t*>(&value);
+    uint64_t ivalue;
+    memcpy(&ivalue, &value, sizeof(value));
     return (ivalue & ((uint64_t)1 << 51));
 }
 
 bool qnan(float value) {
-    uint32_t ivalue = *reinterpret_cast<uint32_t*>(&value);
+    uint32_t ivalue;
+    memcpy(&ivalue, &value, sizeof(value));
     return (ivalue & (1 << 22));
 }
 
 template <typename ftype, typename vtype>
 bool vr4300_jitter_check_input(uint32_t* fcr31, vtype value)
 {
-    ftype fvalue = *reinterpret_cast<ftype*>(&value);
+    ftype fvalue;
+    memcpy(&fvalue, &value, sizeof(value));
+
     switch (fpclassify(fvalue))
     {
     case FP_SUBNORMAL:
@@ -237,8 +241,10 @@ bool vr4300_jitter_check_input_double(uint32_t* fcr31, int64_t value)
 template <typename ftype, typename vtype>
 bool vr4300_jitter_check_inputs(uint32_t* fcr31, vtype value, vtype value2)
 {
-    ftype fvalue = *reinterpret_cast<ftype*>(&value);
-    ftype fvalue2 = *reinterpret_cast<ftype*>(&value2);
+    ftype fvalue;
+    ftype fvalue2;
+    memcpy(&fvalue, &value, sizeof(value));
+    memcpy(&fvalue2, &value2, sizeof(value2));
     int cl1 = fpclassify(fvalue);
     int cl2 = fpclassify(fvalue2);
 
@@ -276,7 +282,8 @@ bool vr4300_jitter_check_inputs_double(uint32_t* fcr31, int64_t value, int64_t v
 
 bool vr4300_jitter_check_input_float_conv_32(uint32_t* fcr31, int32_t value)
 {
-    float fvalue = *reinterpret_cast<float*>(&value);
+    float fvalue;
+    memcpy(&fvalue, &value, sizeof(value));
 
     switch (fpclassify(fvalue)) {
         case FP_SUBNORMAL:
@@ -296,7 +303,8 @@ bool vr4300_jitter_check_input_float_conv_32(uint32_t* fcr31, int32_t value)
 
 bool vr4300_jitter_check_input_double_conv_32(uint32_t* fcr31, int64_t value)
 {
-    double fvalue = *reinterpret_cast<float*>(&value);
+    double fvalue;
+    memcpy(&fvalue, &value, sizeof(value));
 
     switch (fpclassify(fvalue)) {
         case FP_SUBNORMAL:
@@ -316,7 +324,8 @@ bool vr4300_jitter_check_input_double_conv_32(uint32_t* fcr31, int64_t value)
 
 bool vr4300_jitter_check_input_float_conv_64(uint32_t* fcr31, int32_t value)
 {
-    float fvalue = *reinterpret_cast<float*>(&value);
+    float fvalue;
+    memcpy(&fvalue, &value, sizeof(value));
 
     switch (fpclassify(fvalue)) {
         case FP_SUBNORMAL:
@@ -335,7 +344,8 @@ bool vr4300_jitter_check_input_float_conv_64(uint32_t* fcr31, int32_t value)
 
 bool vr4300_jitter_check_input_double_conv_64(uint32_t* fcr31, int64_t value)
 {
-    double fvalue = *reinterpret_cast<float*>(&value);
+    double fvalue;
+    memcpy(&fvalue, &value, sizeof(value));
 
     switch (fpclassify(fvalue)) {
         case FP_SUBNORMAL:
@@ -371,7 +381,9 @@ T vr4300_jitter_fpu_flush_result(T f, uint32_t fcr31)
 
 bool vr4300_jitter_check_output_float(uint32_t* fcr31, int32_t value, int32_t *res)
 {
-    float fvalue = *reinterpret_cast<float*>(&value);
+    float fvalue;
+    memcpy(&fvalue, &value, sizeof(value));
+
     switch (fpclassify(fvalue))
     {
     case FP_SUBNORMAL:
@@ -403,7 +415,9 @@ bool vr4300_jitter_check_output_float(uint32_t* fcr31, int32_t value, int32_t *r
 
 bool vr4300_jitter_check_output_double(uint32_t* fcr31, int64_t value, int64_t *res)
 {
-    double fvalue = *reinterpret_cast<double*>(&value);
+    double fvalue;
+    memcpy(&fvalue, &value, sizeof(value));
+
     switch (fpclassify(fvalue))
     {
     case FP_SUBNORMAL:
