@@ -667,7 +667,7 @@ void VR4300_Jitter::recompile_TRUNC_W_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RCOpArg scratch = m_gpr.Scratch();
         RegCache::Realize(Rd, scratch);
 
@@ -698,7 +698,7 @@ void VR4300_Jitter::recompile_FLOOR_W_S(struct jit_instr *op)
         compile_fpu_check_input_float_conv_32(op);
         compile_fpu_reset_exceptions(op);
 
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RCOpArg scratch = m_gpr.Scratch();
         RCX64Reg scratch3 = m_fpr.Scratch();
         RegCache::Realize(Rd, scratch, scratch3);
@@ -726,7 +726,7 @@ void VR4300_Jitter::recompile_FLOOR_W_D(struct jit_instr *op)
         compile_fpu_check_input_double_conv_32(op);
         compile_fpu_reset_exceptions(op);
 
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RegCache::Realize(Rd);
 
         // floor_w_d, untested
@@ -745,7 +745,7 @@ void VR4300_Jitter::recompile_FLOOR_W_D(struct jit_instr *op)
         compile_fpu_check_input_double_conv_32(op);
         compile_fpu_reset_exceptions(op);
 
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RegCache::Realize(Rd);
 
         // floor_w_d, untested
@@ -771,7 +771,7 @@ void VR4300_Jitter::recompile_TRUNC_W_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RegCache::Realize(Rd);
 
         CVTTPD2DQ(Rd, R(XMM0));
@@ -798,7 +798,7 @@ void VR4300_Jitter::recompile_TRUNC_L_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RCX64Reg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, gprscratch);
 
@@ -818,7 +818,7 @@ void VR4300_Jitter::recompile_CVT_S_W(struct jit_instr *op)
     VALIDATE_FOUT32(op, d);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, (op->s == op->d) ? RCMode::ReadWrite : RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, (op->s == op->d) ? RCMode::ReadWrite : RCMode::Write, true);
         RCX64Reg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, gprscratch);
 
@@ -852,7 +852,7 @@ void VR4300_Jitter::recompile_CVT_S_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RegCache::Realize(Rd);
 
         CVTSD2SS(Rd, R(XMM0));
@@ -955,7 +955,7 @@ void VR4300_Jitter::recompile_CVT_S_L(struct jit_instr *op)
     compile_fpu_unimplemented_check_RSCRATCH(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RegCache::Realize(Rd);
 
         PXOR(XMM0, R(XMM0));
@@ -985,7 +985,7 @@ void VR4300_Jitter::recompile_CVT_W_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RegCache::Realize(Rd);
 
         PERFORM_FLOAT_OPERATION_WITH_ROUNDING_MODE({
@@ -1022,7 +1022,7 @@ void VR4300_Jitter::recompile_ROUND_W_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RegCache::Realize(Rd);
 
         // round_w_d, untested
@@ -1053,7 +1053,7 @@ void VR4300_Jitter::recompile_CEIL_W_D(struct jit_instr *op)
 
     {
 
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RCX64Reg fprscratch = m_fpr.Scratch();
         RegCache::Realize(Rd, fprscratch);
 
@@ -1081,7 +1081,7 @@ void VR4300_Jitter::recompile_CEIL_W_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RegCache::Realize(Rd);
 
         // ceil_w_s, untested
@@ -1107,7 +1107,7 @@ void VR4300_Jitter::recompile_CEIL_L_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RegCache::Realize(Rd);
 
         // ceil_l_d, untested
@@ -1133,7 +1133,7 @@ void VR4300_Jitter::recompile_CEIL_L_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RegCache::Realize(Rd);
 
         // ceil_l_s, untested
@@ -1607,7 +1607,7 @@ void VR4300_Jitter::recompile_NEG_S(struct jit_instr *op)
     compile_fpu_check_input_float(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RegCache::Realize(Rd);
 
         if (op->d != op->s) {
@@ -1638,7 +1638,7 @@ void VR4300_Jitter::recompile_NEG_D(struct jit_instr *op)
     compile_fpu_check_input_double(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RegCache::Realize(Rd);
 
         if (op->d != op->s) {
@@ -1670,7 +1670,7 @@ void VR4300_Jitter::recompile_ROUND_W_S(struct jit_instr *op)
     compile_fpu_check_input_float_conv_32(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, scratch2, gprscratch);
@@ -1703,7 +1703,7 @@ void VR4300_Jitter::recompile_CVT_W_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, scratch2, gprscratch);
@@ -1745,7 +1745,7 @@ void VR4300_Jitter::recompile_CVT_L_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, scratch2, gprscratch);
@@ -1787,7 +1787,7 @@ void VR4300_Jitter::recompile_TRUNC_L_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, scratch2, gprscratch);
@@ -1820,7 +1820,7 @@ void VR4300_Jitter::recompile_CVT_L_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, scratch2, gprscratch);
@@ -1862,7 +1862,7 @@ void VR4300_Jitter::recompile_ROUND_L_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, scratch2, gprscratch);
@@ -1896,7 +1896,7 @@ void VR4300_Jitter::recompile_ROUND_L_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, scratch2, gprscratch);
@@ -1930,7 +1930,7 @@ void VR4300_Jitter::recompile_CVT_D_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RegCache::Realize(Rd);
 
         CVTSS2SD(Rd, R(XMM0));
@@ -1956,7 +1956,7 @@ void VR4300_Jitter::recompile_CVT_D_W(struct jit_instr *op)
 
         load_cop1_register_to_host_register(op, 32, op->s, scratch);
 
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RegCache::Realize(Rd, scratch);
 
         CVTSI2SD(Rd, R(scratch));
@@ -1988,7 +1988,7 @@ void VR4300_Jitter::recompile_CVT_D_L(struct jit_instr *op)
     compile_fpu_unimplemented_check_RSCRATCH(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RegCache::Realize(Rd);
 
         CVTSI2SD(Rd, R(RSCRATCH));
@@ -2020,7 +2020,7 @@ void VR4300_Jitter::recompile_MUL_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RegCache::Realize(Rd);
         MOVSS(Rd, R(XMM0));
         MULSS(Rd, R(XMM1));
@@ -2051,7 +2051,7 @@ void VR4300_Jitter::recompile_MUL_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, (op->d == op->t || op->d == op->s) ? RCMode::ReadWrite : RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, (op->d == op->t || op->d == op->s) ? RCMode::ReadWrite : RCMode::Write);
         RegCache::Realize(Rd);
 
         if (op->d == op->t) {
@@ -2090,7 +2090,7 @@ void VR4300_Jitter::recompile_DIV_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, (op->t == op->d || op->t == op->s) ? RCMode::ReadWrite : RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, (op->t == op->d || op->t == op->s) ? RCMode::ReadWrite : RCMode::Write, true);
         RegCache::Realize(Rd);
 
         if (op->t == op->d) {
@@ -2139,7 +2139,7 @@ void VR4300_Jitter::recompile_DIV_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RegCache::Realize(Rd);
 
         if (op->d != op->s) {
@@ -2206,7 +2206,7 @@ void VR4300_Jitter::recompile_ABS_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, op->s == op->d ? RCMode::ReadWrite : RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, op->s == op->d ? RCMode::ReadWrite : RCMode::Write, true);
         RegCache::Realize(Rd);
 
         if (op->d != op->s) {
@@ -2239,7 +2239,7 @@ void VR4300_Jitter::recompile_ABS_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, op->d == op->s ? RCMode::ReadWrite : RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, op->d == op->s ? RCMode::ReadWrite : RCMode::Write);
         RegCache::Realize(Rd);
 
         if (op->d != op->s) {
@@ -2274,7 +2274,7 @@ void VR4300_Jitter::recompile_SUB_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RegCache::Realize(Rd);
 
         if (op->t == op->d) {
@@ -2323,7 +2323,7 @@ void VR4300_Jitter::recompile_SUB_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, (op->d == op->s) ? RCMode::ReadWrite : RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, (op->d == op->s) ? RCMode::ReadWrite : RCMode::Write);
         RegCache::Realize(Rd);
 
         if (op->d != op->s) {
@@ -2356,7 +2356,7 @@ void VR4300_Jitter::recompile_SQRT_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RegCache::Realize(Rd);
         SQRTSS(Rd, R(XMM0));
 
@@ -2384,7 +2384,7 @@ void VR4300_Jitter::recompile_SQRT_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RegCache::Realize(Rd);
 
         SQRTSD(Rd, R(XMM0));
@@ -2402,7 +2402,7 @@ void VR4300_Jitter::recompile_MOV_S(struct jit_instr *op)
     VALIDATE_FOUT32(op, d);
 
     RCOpArg Rs = m_fpr.Use(op->s, RCMode::Read, true);
-    RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+    RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
     RegCache::Realize(Rs, Rd);
 
     if (op->d != op->s) {
@@ -2416,7 +2416,7 @@ void VR4300_Jitter::recompile_MOV_D(struct jit_instr *op)
     VALIDATE_FOUT(op, d);
 
     RCOpArg Rs = m_fpr.Use(op->s, RCMode::Read);
-    RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+    RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
     RegCache::Realize(Rs, Rd);
 
     if (op->d != op->s) {
@@ -2444,7 +2444,7 @@ void VR4300_Jitter::recompile_ADD_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, (op->d == op->s) ? RCMode::ReadWrite : RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, (op->d == op->s) ? RCMode::ReadWrite : RCMode::Write);
         RegCache::Realize(Rd);
 
         if (op->d != op->s) {
@@ -2477,7 +2477,7 @@ void VR4300_Jitter::recompile_FLOOR_L_D(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, scratch2, gprscratch);
@@ -2506,7 +2506,7 @@ void VR4300_Jitter::recompile_FLOOR_L_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, scratch2, gprscratch);
