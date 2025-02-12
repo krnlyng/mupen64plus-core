@@ -161,6 +161,7 @@ struct recompiler_hot_state
     char *last_names[NUM_DBG_INSTRUCTIONS];
     int last_idx;
 #endif
+    int64_t tmp;
 };
 
 void vr4300_jitter_fix_hot_cycles(void);

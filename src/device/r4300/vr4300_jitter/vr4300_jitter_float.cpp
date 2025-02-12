@@ -120,10 +120,10 @@ void VR4300_Jitter::compile_fpu_check_exceptions(struct jit_instr *op, bool conv
         FixupBranch no_ ##exception_host = J_CC(CC_Z, XEmitter::Jump::Near); \
         OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_ ## exception_target ## _BIT)); \
         TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_ENABLE_ ## exception_target ## _BIT)); \
-        FixupBranch no_ ##exception_host ## _fpe = J_CC(CC_Z, XEmitter::Jump::Near); \
+        FixupBranch no_ ##exception_target ## _fpe = J_CC(CC_Z, XEmitter::Jump::Near); \
         MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE)); \
         compile_exception_general(op); \
-        SetJumpTarget(no_ ##exception_host ## _fpe); \
+        SetJumpTarget(no_ ##exception_target ## _fpe); \
         OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_ ## exception_target ## _BIT)); \
         SetJumpTarget(no_ ##exception_host); \
     } while (0)
@@ -153,6 +153,7 @@ void VR4300_Jitter::compile_fpu_check_exceptions(struct jit_instr *op, bool conv
     SetJumpTarget(no_flush_subnormals);
     SetJumpTarget(underflow);
     SetJumpTarget(inexact);
+    OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_UNIMPLOP_BIT));
     MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE));
     compile_exception_general(op);
     SetJumpTarget(none);
@@ -204,6 +205,7 @@ bool vr4300_jitter_check_input(uint32_t* fcr31, vtype value)
             (*fcr31) |= FCR31_CAUSE_INVALIDOP_BIT;
             if (!((*fcr31) & FCR31_ENABLE_INVALIDOP_BIT)) {
                 (*fcr31) |= FCR31_FLAG_INVALIDOP_BIT;
+                return false;
             }
         } else {
             (*fcr31) |= FCR31_CAUSE_UNIMPLOP_BIT;
@@ -244,6 +246,10 @@ bool vr4300_jitter_check_inputs(uint32_t* fcr31, vtype value, vtype value2)
 
     if ((cl1 == FP_NAN && qnan(fvalue)) || (cl2 == FP_NAN && qnan(fvalue2))) {
         (*fcr31) |= FCR31_CAUSE_INVALIDOP_BIT;
+        if (!((*fcr31) & FCR31_ENABLE_INVALIDOP_BIT)) {
+            (*fcr31) |= FCR31_FLAG_INVALIDOP_BIT;
+            return false;
+        }
         return true;
     }
 
@@ -363,6 +369,7 @@ bool vr4300_jitter_check_output_float(uint32_t* fcr31, int32_t value, int32_t *r
     case FP_SUBNORMAL:
         if (!((*fcr31) & FCR31_FLUSH_SUBNORMALS) || ((*fcr31) & FCR31_ENABLE_UNDERFLOW_BIT) || ((*fcr31) & FCR31_ENABLE_INEXACT_BIT)) {
             (*fcr31) |= FCR31_CAUSE_UNIMPLOP_BIT;
+            *res = value;
             return true;
         }
         (*fcr31) |= FCR31_CAUSE_UNDERFLOW_BIT;
@@ -376,10 +383,10 @@ bool vr4300_jitter_check_output_float(uint32_t* fcr31, int32_t value, int32_t *r
 
         *res = vr4300_jitter_fpu_flush_result(fvalue, *fcr31);
 
-        return true;
+        return false;
     case FP_NAN:
         *res = 0x7fbf'ffff;
-        return true;
+        return false;
     }
 
     *res = value;
@@ -394,6 +401,7 @@ bool vr4300_jitter_check_output_double(uint32_t* fcr31, int64_t value, int64_t *
     case FP_SUBNORMAL:
         if (!((*fcr31) & FCR31_FLUSH_SUBNORMALS) || ((*fcr31) & FCR31_ENABLE_UNDERFLOW_BIT) || ((*fcr31) & FCR31_ENABLE_INEXACT_BIT)) {
             (*fcr31) |= FCR31_CAUSE_UNIMPLOP_BIT;
+            *res = value;
             return true;
         }
         (*fcr31) |= FCR31_CAUSE_UNDERFLOW_BIT;
@@ -407,10 +415,10 @@ bool vr4300_jitter_check_output_double(uint32_t* fcr31, int64_t value, int64_t *
 
         *res = vr4300_jitter_fpu_flush_result(fvalue, *fcr31);
 
-        return true;
+        return false;
     case FP_NAN:
         *res = 0x7ff7'ffff'ffff'ffff;
-        return true;
+        return false;
 
     default:
         break;
@@ -425,6 +433,8 @@ void VR4300_Jitter::compile_fpu_check_input_float(struct jit_instr *op)
 #ifdef ACCURATE_FPU_BEHAVIOR
     // TODO: fast implementation using UCOMISD etc
     BitSet32 registers_in_use = caller_saved_registers_in_use();
+    registers_in_use[XMM0 + 16] = true;
+    registers_in_use[XMM1 + 16] = true;
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
     LEA(64, ABI_PARAM1, HOTSTATE_VAR(cp1_fcr31));
     MOVD_xmm(R(ABI_PARAM2), XMM0);
@@ -444,6 +454,8 @@ void VR4300_Jitter::compile_fpu_check_input_double(struct jit_instr *op)
 #ifdef ACCURATE_FPU_BEHAVIOR
     // TODO: fast implementation using UCOMISD etc
     BitSet32 registers_in_use = caller_saved_registers_in_use();
+    registers_in_use[XMM0 + 16] = true;
+    registers_in_use[XMM1 + 16] = true;
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
     LEA(64, ABI_PARAM1, HOTSTATE_VAR(cp1_fcr31));
     MOVQ_xmm(R(ABI_PARAM2), XMM0);
@@ -463,6 +475,8 @@ void VR4300_Jitter::compile_fpu_check_input_float_conv_32(struct jit_instr *op)
 #ifdef ACCURATE_FPU_BEHAVIOR
     // TODO: fast implementation using UCOMISD etc
     BitSet32 registers_in_use = caller_saved_registers_in_use();
+    registers_in_use[XMM0 + 16] = true;
+    registers_in_use[XMM1 + 16] = true;
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
     LEA(64, ABI_PARAM1, HOTSTATE_VAR(cp1_fcr31));
     MOVD_xmm(R(ABI_PARAM2), XMM0);
@@ -482,6 +496,8 @@ void VR4300_Jitter::compile_fpu_check_input_double_conv_32(struct jit_instr *op)
 #ifdef ACCURATE_FPU_BEHAVIOR
     // TODO: fast implementation using UCOMISD etc
     BitSet32 registers_in_use = caller_saved_registers_in_use();
+    registers_in_use[XMM0 + 16] = true;
+    registers_in_use[XMM1 + 16] = true;
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
     LEA(64, ABI_PARAM1, HOTSTATE_VAR(cp1_fcr31));
     MOVQ_xmm(R(ABI_PARAM2), XMM0);
@@ -501,6 +517,8 @@ void VR4300_Jitter::compile_fpu_check_input_float_conv_64(struct jit_instr *op)
 #ifdef ACCURATE_FPU_BEHAVIOR
     // TODO: fast implementation using UCOMISD etc
     BitSet32 registers_in_use = caller_saved_registers_in_use();
+    registers_in_use[XMM0 + 16] = true;
+    registers_in_use[XMM1 + 16] = true;
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
     LEA(64, ABI_PARAM1, HOTSTATE_VAR(cp1_fcr31));
     MOVD_xmm(R(ABI_PARAM2), XMM0);
@@ -520,6 +538,8 @@ void VR4300_Jitter::compile_fpu_check_input_double_conv_64(struct jit_instr *op)
 #ifdef ACCURATE_FPU_BEHAVIOR
     // TODO: fast implementation using UCOMISD etc
     BitSet32 registers_in_use = caller_saved_registers_in_use();
+    registers_in_use[XMM0 + 16] = true;
+    registers_in_use[XMM1 + 16] = true;
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
     LEA(64, ABI_PARAM1, HOTSTATE_VAR(cp1_fcr31));
     MOVQ_xmm(R(ABI_PARAM2), XMM0);
@@ -539,6 +559,8 @@ void VR4300_Jitter::compile_fpu_check_inputs_float(struct jit_instr *op)
 #ifdef ACCURATE_FPU_BEHAVIOR
     // TODO: fast implementation using UCOMISD etc
     BitSet32 registers_in_use = caller_saved_registers_in_use();
+    registers_in_use[XMM0 + 16] = true;
+    registers_in_use[XMM1 + 16] = true;
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
     LEA(64, ABI_PARAM1, HOTSTATE_VAR(cp1_fcr31));
     MOVQ_xmm(R(ABI_PARAM2), XMM0);
@@ -559,6 +581,8 @@ void VR4300_Jitter::compile_fpu_check_inputs_double(struct jit_instr *op)
 #ifdef ACCURATE_FPU_BEHAVIOR
     // TODO: fast implementation using UCOMISD etc
     BitSet32 registers_in_use = caller_saved_registers_in_use();
+    registers_in_use[XMM0 + 16] = true;
+    registers_in_use[XMM1 + 16] = true;
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
     LEA(64, ABI_PARAM1, HOTSTATE_VAR(cp1_fcr31));
     MOVQ_xmm(R(ABI_PARAM2), XMM0);
@@ -577,56 +601,53 @@ void VR4300_Jitter::compile_fpu_check_inputs_double(struct jit_instr *op)
 void VR4300_Jitter::compile_fpu_check_output_float(struct jit_instr *op)
 {
 #ifdef ACCURATE_FPU_BEHAVIOR
-    uint32_t res;
     // TODO: fast implementation using UCOMISD etc
     BitSet32 registers_in_use = caller_saved_registers_in_use();
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
     LEA(64, ABI_PARAM1, HOTSTATE_VAR(cp1_fcr31));
     MOVD_xmm(R(ABI_PARAM2), XMM1);
-    MOV(64, R(ABI_PARAM3), ImmPtr(&res));
+    MOV(64, R(ABI_PARAM3), ImmPtr(&HOT_STATE->tmp));
     ABI_CallFunction(vr4300_jitter_check_output_float);
     ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
-
-    {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
-        RegCache::Realize(Rd);
-        MOV(64, R(RSCRATCH2), ImmPtr(&res));
-        MOVSS(Rd, MatR(RSCRATCH2));
-    }
 
     CMP(32, R(ABI_RETURN), Imm32(1));
     FixupBranch neq = J_CC(CC_NE, XEmitter::Jump::Near);
     MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE));
     compile_exception_general(op);
     SetJumpTarget(neq);
+
+    {
+        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write, true);
+        RegCache::Realize(Rd);
+        MOV(64, R(RSCRATCH2), ImmPtr(&HOT_STATE->tmp));
+        MOVSS(Rd, MatR(RSCRATCH2));
+    }
 #endif
 }
 
 void VR4300_Jitter::compile_fpu_check_output_double(struct jit_instr *op)
 {
 #ifdef ACCURATE_FPU_BEHAVIOR
-    // TODO: fast implementation using UCOMISD etc
-    uint64_t res;
     BitSet32 registers_in_use = caller_saved_registers_in_use();
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
     LEA(64, ABI_PARAM1, HOTSTATE_VAR(cp1_fcr31));
     MOVQ_xmm(R(ABI_PARAM2), XMM1);
-    MOV(64, R(ABI_PARAM3), ImmPtr(&res));
+    MOV(64, R(ABI_PARAM3), ImmPtr(&HOT_STATE->tmp));
     ABI_CallFunction(vr4300_jitter_check_output_double);
     ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
-
-    {
-        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
-        RegCache::Realize(Rd);
-        MOV(64, R(RSCRATCH2), ImmPtr(&res));
-        MOVSD(Rd, MatR(RSCRATCH2));
-    }
 
     CMP(32, R(ABI_RETURN), Imm32(1));
     FixupBranch neq = J_CC(CC_NE, XEmitter::Jump::Near);
     MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE));
     compile_exception_general(op);
     SetJumpTarget(neq);
+
+    {
+        RCX64Reg Rd = m_fpr.Bind(op->d, RCMode::Write);
+        RegCache::Realize(Rd);
+        MOV(64, R(RSCRATCH2), ImmPtr(&HOT_STATE->tmp));
+        MOVSD(Rd, MatR(RSCRATCH2));
+    }
 #endif
 }
 
@@ -2046,7 +2067,7 @@ void VR4300_Jitter::recompile_MUL_D(struct jit_instr *op)
     }
 
     compile_fpu_check_exceptions(op, false);
-    compile_fpu_check_output_float(op);
+    compile_fpu_check_output_double(op);
 }
 
 void VR4300_Jitter::recompile_DIV_S(struct jit_instr *op)
@@ -2153,7 +2174,7 @@ void VR4300_Jitter::recompile_ADD_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, (op->s == op->d) ? RCMode::ReadWrite : RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, (op->s == op->d) ? RCMode::ReadWrite : RCMode::Write, true);
         RegCache::Realize(Rd);
 
         if (op->s != op->d) {
@@ -2185,7 +2206,7 @@ void VR4300_Jitter::recompile_ABS_S(struct jit_instr *op)
     compile_fpu_reset_exceptions(op);
 
     {
-        RCX64Reg Rd = m_fpr.Bind(op->d, op->s == op->s ? RCMode::ReadWrite : RCMode::Write, true);
+        RCX64Reg Rd = m_fpr.Bind(op->d, op->s == op->d ? RCMode::ReadWrite : RCMode::Write, true);
         RegCache::Realize(Rd);
 
         if (op->d != op->s) {
@@ -3032,11 +3053,34 @@ void VR4300_Jitter::recompile_CTC1(struct jit_instr *op)
     if (op->d == 31) {
         {
             RCOpArg Rt = op->t ? m_gpr.Use(op->t, RCMode::Read) : RCOpArg::Imm64(0);
-            RegCache::Realize(Rt);
+            RCX64Reg scratch = m_gpr.Scratch();
+            RegCache::Realize(Rt, scratch);
 
             MOV(64, R(RSCRATCH), Rt);
             AND(32, R(RSCRATCH), Imm32(0x183ffff));
             MOV(32, HOTSTATE_VAR(cp1_fcr31), R(RSCRATCH));
+
+            STMXCSR(HOTSTATE_VAR(tmp));
+            MOV(32, R(scratch), HOTSTATE_VAR(tmp));
+
+            AND(32, R(scratch), Imm32(0x00009FFF));
+
+            PERFORM_FLOAT_OPERATION_WITH_ROUNDING_MODE({
+                // round
+                NOP();
+            },{
+                // trunc
+                OR(32, R(scratch), Imm32(3 << 13));
+            },{
+                // ceil
+                OR(32, R(scratch), Imm32(2 << 13));
+            },{
+                // floor
+                OR(32, R(scratch), Imm32(1 << 13));
+            });
+
+            MOV(32, HOTSTATE_VAR(tmp), R(scratch));
+            LDMXCSR(HOTSTATE_VAR(tmp));
         }
 
         // If both cause & enable are set, fire an exception.

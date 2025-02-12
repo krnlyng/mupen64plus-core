@@ -2973,6 +2973,9 @@ void VR4300_Jitter::compile_exception_general(struct jit_instr *op)
         RCForkGuard gpr_guard = m_gpr.Fork();
         RCForkGuard fpr_guard = m_fpr.Fork();
 
+        m_gpr.Revert();
+        m_fpr.Revert();
+
         compile_goto_dispatcher(op, 0x80000180, false);
     }
 }
