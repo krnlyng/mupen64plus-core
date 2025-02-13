@@ -2895,7 +2895,7 @@ void VR4300_Jitter::recompile_SDC1(struct jit_instr *op)
         RCX64Reg out_reg = m_gpr.Scratch();
         RegCache::Realize(out_reg);
 
-        load_cop1_register_to_host_register(op, 64, op->t, out_reg);
+        load_cop1_register_to_host_register(op, 64, HOT_STATE->fr_is_set ? op->t : (op->t & ~1), out_reg);
 
         if (vr4300_jitter_is_rdram_address(address)) {
             ROR(64, R(out_reg), Imm8(32));
