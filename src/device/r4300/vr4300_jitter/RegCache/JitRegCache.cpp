@@ -359,16 +359,15 @@ RCOpArg RegCache::UseNoImm(preg_t preg, RCMode mode)
   return RCOpArg{this, preg};
 }
 
-RCOpArg RegCache::BindOrImm(preg_t preg, RCMode mode)
+RCOpArg RegCache::BindOrImm(preg_t preg, RCMode mode, bool flush_upper)
 {
   if (!m_reg_0_usable && preg == 0) abort();
-  m_constraints[preg].AddBindOrImm(mode);
+  m_constraints[preg].AddBindOrImm(mode, flush_upper);
   return RCOpArg{this, preg};
 }
 
-RCX64Reg RegCache::Bind(preg_t preg, RCMode mode, bool only_32bit)
+void RegCache::ValidateRCMode(preg_t preg, RCMode mode, bool only_32bit)
 {
-//  preg_t preg = only_32bit ? (preg_ & ~1) : preg_;
   if (!m_reg_0_usable && preg == 0) abort();
   if (!m_reg_0_usable) { //gpr
     if (mode == RCMode::Read) {
@@ -406,14 +405,19 @@ RCX64Reg RegCache::Bind(preg_t preg, RCMode mode, bool only_32bit)
       }
     }
   }
-  m_constraints[preg].AddBind(mode, only_32bit);
+}
+
+RCX64Reg RegCache::Bind(preg_t preg, RCMode mode, bool only_32bit, bool flush_upper)
+{
+  ValidateRCMode(preg, mode, only_32bit);
+  m_constraints[preg].AddBind(mode, only_32bit, flush_upper);
   return RCX64Reg{this, preg};
 }
 
-RCX64Reg RegCache::RevertableBind(preg_t preg, RCMode mode, bool only_32bit)
+RCX64Reg RegCache::RevertableBind(preg_t preg, RCMode mode, bool only_32bit, bool flush_upper)
 {
-  if (!m_reg_0_usable && preg == 0) abort();
-  m_constraints[preg].AddRevertableBind(mode, only_32bit);
+  ValidateRCMode(preg, mode, only_32bit);
+  m_constraints[preg].AddRevertableBind(mode, only_32bit, flush_upper);
   return RCX64Reg{this, preg};
 }
 
@@ -595,7 +599,7 @@ void RegCache::PreloadRegisters(BitSet32 to_preload, bool only32_bit)
     if (NumFreeRegisters() < 2)
       return;
     if (!m_regs[preg].Location().value().IsImm()) {
-      BindToRegister(preg, true, false, only32_bit);
+      BindToRegister(preg, true, false, only32_bit, true);
     }
   }
 }
@@ -632,7 +636,7 @@ void RegCache::DiscardRegContentsIfCached(preg_t preg)
   }
 }
 
-void RegCache::BindToRegister(preg_t i, bool doLoad, bool makeDirty, bool only_32bit)
+void RegCache::BindToRegister(preg_t i, bool doLoad, bool makeDirty, bool only_32bit, bool flush_upper)
 {
 #if 1
     //if (doLoad) {
@@ -652,6 +656,8 @@ void RegCache::BindToRegister(preg_t i, bool doLoad, bool makeDirty, bool only_3
         }
     }
 #endif
+
+  m_regs[i].SetFlushUpper(flush_upper);
 
   if (!m_regs[i].IsBound())
   {
@@ -728,7 +734,7 @@ void RegCache::StoreFromRegister(preg_t i, FlushMode mode)
   {
     if (Is32BitOnly(i))
     {
-      StoreRegister32(i, GetDefaultLocation32(i));
+      StoreRegister32(i, GetDefaultLocation32(i), m_regs[i].FlushUpper());
     }
     else
     {
@@ -892,9 +898,10 @@ void RegCache::Realize(preg_t preg)
   const bool dirty = m_constraints[preg].ShouldDirty();
   const bool kill_imm = m_constraints[preg].ShouldKillImmediate();
   const bool kill_mem = m_constraints[preg].ShouldKillMemory();
+  const bool flush_upper = m_constraints[preg].ShouldFlushUpper();
 
   const auto do_bind = [&] {
-    BindToRegister(preg, load, dirty, m_constraints[preg].Is32BitOnly());
+    BindToRegister(preg, load, dirty, m_constraints[preg].Is32BitOnly(), flush_upper);
     m_constraints[preg].Realized(RCConstraint::RealizedLoc::Bound);
   };
 

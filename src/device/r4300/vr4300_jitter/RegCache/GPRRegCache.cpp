@@ -101,7 +101,7 @@ BitSet32 GPRRegCache::CountRegsIn(preg_t preg, u32 lookahead) const
   return regs_used;
 }
 
-void GPRRegCache::StoreRegister32(preg_t preg, const OpArg& new_loc)
+void GPRRegCache::StoreRegister32(preg_t preg, const OpArg& new_loc, bool flush_upper)
 {
     abort();
 }

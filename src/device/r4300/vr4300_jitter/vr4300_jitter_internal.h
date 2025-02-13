@@ -193,13 +193,6 @@ public:
 
         void ClearCache();
 
-private:
-        template <typename T>
-        const void* GetConstantFromPool(const T& value)
-        {
-          return m_const_pool.GetConstant(&value, sizeof(T), 1, 0);
-        }
-
         template <typename T>
         Gen::OpArg MConst(const T& value)
         {
@@ -210,6 +203,13 @@ private:
         Gen::OpArg MConst(const T (&value)[N], size_t index = 0)
         {
           return Gen::M(m_const_pool.GetConstant(&value, sizeof(T), N, index));
+        }
+
+private:
+        template <typename T>
+        const void* GetConstantFromPool(const T& value)
+        {
+          return m_const_pool.GetConstant(&value, sizeof(T), 1, 0);
         }
 
         void compile_cycle_count_checks(struct jit_instr *op, uint32_t pc, bool no_compare, bool no_add, u32 compare_pc);
@@ -274,7 +274,7 @@ private:
         void load_cop1_register_to_host_register(struct jit_instr *op, int bits, const RCOpArg &Rt, const RCX64Reg &target);
         void load_cop1_register_to_host_register(struct jit_instr *op, int bits, int reg, const RCX64Reg &target);
         void store_host_register_to_cop1_register(struct jit_instr *op, int bits, const RCOpArg &cpu_val, const RCX64Reg &Rt);
-        void store_host_register_to_cop1_register(struct jit_instr *op, int bits, const RCOpArg &cpu_val, int reg);
+        void store_host_register_to_cop1_register(struct jit_instr *op, int bits, const RCOpArg &cpu_val, int reg, bool flush_upper = true);
 
         void recompile_LW(struct jit_instr *op, bool unsigned_lw = false);
         void recompile_LWU(struct jit_instr *op);
@@ -475,6 +475,7 @@ private:
 
         void recompile_RESERVED_COP2(struct jit_instr *op);
         void recompile_RESERVED(struct jit_instr *op);
+        void recompile_UNIMPLEMENTED_COP1(struct jit_instr *op);
 
         void div_core(struct jit_instr *op, const RCOpArg &edx, const RCOpArg &eax, const RCOpArg &Rs, const RCOpArg &Rt, bool un_signed);
 

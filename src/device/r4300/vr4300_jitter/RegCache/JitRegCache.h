@@ -160,9 +160,9 @@ public:
 
   RCOpArg Use(preg_t preg, RCMode mode, bool only_32bit = false);
   RCOpArg UseNoImm(preg_t preg, RCMode mode);
-  RCOpArg BindOrImm(preg_t preg, RCMode mode);
-  RCX64Reg Bind(preg_t preg, RCMode mode, bool only_32bit = false);
-  RCX64Reg RevertableBind(preg_t preg, RCMode mode, bool only_32bit = false);
+  RCOpArg BindOrImm(preg_t preg, RCMode mode, bool flush_upper = true);
+  RCX64Reg Bind(preg_t preg, RCMode mode, bool only_32bit = false, bool flush_upper = true);
+  RCX64Reg RevertableBind(preg_t preg, RCMode mode, bool only_32bit = false, bool flush_upper = true);
   RCX64Reg Scratch();
   RCX64Reg Scratch(Gen::X64Reg xr);
 
@@ -192,11 +192,13 @@ protected:
   friend class RCX64Reg;
   friend class RCForkGuard;
 
+  void ValidateRCMode(preg_t preg, RCMode mode, bool only_32bit);
+
   virtual Gen::OpArg GetDefaultLocation(preg_t preg) const = 0;
   virtual Gen::OpArg GetDefaultLocation32(preg_t preg) const = 0;
   virtual void StoreRegister(preg_t preg, const Gen::OpArg& new_loc) = 0;
   virtual void LoadRegister(preg_t preg, Gen::X64Reg new_loc) = 0;
-  virtual void StoreRegister32(preg_t preg, const Gen::OpArg& new_loc) = 0;
+  virtual void StoreRegister32(preg_t preg, const Gen::OpArg& new_loc, bool flush_upper) = 0;
   virtual void LoadRegister32(preg_t preg, Gen::X64Reg new_loc) = 0;
 
   virtual const Gen::X64Reg* GetAllocationOrder(size_t* count) const = 0;
@@ -206,7 +208,7 @@ protected:
 
   void FlushX(Gen::X64Reg reg);
   void DiscardRegContentsIfCached(preg_t preg);
-  void BindToRegister(preg_t preg, bool doLoad = true, bool makeDirty = true, bool only_32bit = false);
+  void BindToRegister(preg_t preg, bool doLoad = true, bool makeDirty = true, bool only_32bit = false, bool flush_upper = true);
   void StoreFromRegister(preg_t preg, FlushMode mode = FlushMode::Full);
 
   Gen::X64Reg GetFreeXReg();

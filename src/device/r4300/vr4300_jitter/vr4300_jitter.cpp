@@ -1036,6 +1036,7 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
         if (instr->has_t && instr->has_s && instr->has_d) {
             if (is_float) {
                 assert(instr->has_a);
+
                 if (instr->a == 0x10 || instr->a == 0x14)  {
                     instr->fregsOut32[instr->d] = 1;
                     instr->fregsIn32[instr->s] = 1;
@@ -1201,30 +1202,45 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
 
         if (instr->has_s && instr->has_d && !instr->has_t && instr->has_a) {
             if (is_float) {
+                bool ignore_low_bit = false;
                 assert(instr->has_a);
-                bool out_32 = false;
-                if (strlen(instr->name) >= 4 && instr->name[strlen(instr->name) - 2] == '_' && instr->name[strlen(instr->name) - 4] == '_') {
-                    if (instr->name[strlen(instr->name) - 3] == 'L' || instr->name[strlen(instr->name) - 3] == 'D') {
-                        out_32 = false;
-                    } else if (instr->name[strlen(instr->name) - 3] == 'S' || instr->name[strlen(instr->name) - 3] == 'W') {
-                        out_32 = true;
-                    } else abort();
+                if (strncmp(instr->name, "MOV_S", 5) == 0) {
+                    // MOV_S behaves like MOV_D
+                    instr->fregsOut[instr->d] = 1;
+                    instr->fregsIn[instr->s] = 1;
                 } else {
+                    if (strncmp(instr->name, "CVT", 3) == 0
+                        || strncmp(instr->name, "ROUND", 4) == 0
+                        || strncmp(instr->name, "TRUNC", 4) == 0
+                        || strncmp(instr->name, "CEIL", 4) == 0
+                        || strncmp(instr->name, "FLOOR", 4) == 0
+                        ) {
+                        ignore_low_bit = true;
+                    }
+                    bool out_32 = false;
+                    if (strlen(instr->name) >= 4 && instr->name[strlen(instr->name) - 2] == '_' && instr->name[strlen(instr->name) - 4] == '_') {
+                        if (instr->name[strlen(instr->name) - 3] == 'L' || instr->name[strlen(instr->name) - 3] == 'D') {
+                            out_32 = false;
+                        } else if (instr->name[strlen(instr->name) - 3] == 'S' || instr->name[strlen(instr->name) - 3] == 'W') {
+                            out_32 = true;
+                        } else abort();
+                    } else {
+                        if (instr->a == 0x10 || instr->a == 0x14) {
+                            out_32 = true;
+                        } else if (instr->a == 0x11 || instr->a == 0x15) {
+                            out_32 = false;
+                        } else abort();
+                    }
                     if (instr->a == 0x10 || instr->a == 0x14) {
-                        out_32 = true;
+                        instr->fregsIn32[instr->s & (ignore_low_bit ? ~1 : ~0)] = 1;
+                        if (out_32) instr->fregsOut32[instr->d] = 1;
+                        else instr->fregsOut[instr->d] = 1;
                     } else if (instr->a == 0x11 || instr->a == 0x15) {
-                        out_32 = false;
+                        instr->fregsIn[instr->s & (ignore_low_bit ? ~1 : ~0)] = 1;
+                        if (!out_32) instr->fregsOut[instr->d] = 1;
+                        else instr->fregsOut32[instr->d] = 1;
                     } else abort();
                 }
-                if (instr->a == 0x10 || instr->a == 0x14) {
-                    instr->fregsIn32[instr->s] = 1;
-                    if (out_32) instr->fregsOut32[instr->d] = 1;
-                    else instr->fregsOut[instr->d] = 1;
-                } else if (instr->a == 0x11 || instr->a == 0x15) {
-                    instr->fregsIn[instr->s] = 1;
-                    if (!out_32) instr->fregsOut[instr->d] = 1;
-                    else instr->fregsOut32[instr->d] = 1;
-                } else abort();
                 found++;
             } else {
                 found = 1400;
@@ -4634,12 +4650,6 @@ void VR4300_Jitter::recompile_instruction(struct jit_instr *op)
             case VR4300_OP_SWC2:
                 recompile_RESERVED_COP2(op);
                 break;
-            case VR4300_OP_CVT_W_W:
-            case VR4300_OP_CVT_L_L:
-            case VR4300_OP_CVT_S_S:
-            case VR4300_OP_CVT_D_D:
-            case VR4300_OP_CVT_W_L:
-            case VR4300_OP_CVT_L_W:
             case VR4300_OP_BC3F:
             case VR4300_OP_BC3FL:
             case VR4300_OP_BC3T:
@@ -4654,6 +4664,14 @@ void VR4300_Jitter::recompile_instruction(struct jit_instr *op)
             case VR4300_OP_MTC3:
             case VR4300_OP_RESERVED31:
                 recompile_RESERVED(op);
+                break;
+            case VR4300_OP_CVT_W_W:
+            case VR4300_OP_CVT_L_L:
+            case VR4300_OP_CVT_S_S:
+            case VR4300_OP_CVT_D_D:
+            case VR4300_OP_CVT_W_L:
+            case VR4300_OP_CVT_L_W:
+                recompile_UNIMPLEMENTED_COP1(op);
                 break;
             default:
                 DebugMessage(M64MSG_VERBOSE, "UNIMPLEMENTED OPERATION@0x%08x: %d INSTRUCTION: %x, %s\n", op->address, op->operation, op->instruction, op->name);
@@ -5510,24 +5528,26 @@ void vr4300_jitter_map_corrupt_rdram(int corrupt)
 
 void VR4300_Jitter::MapCorruptRdram(bool corrupt)
 {
-    HOT_STATE->rdram_generate_slowcode = corrupt;
-    HOT_STATE->rdram_corruption_changed = 1;
+    if (HOT_STATE->rdram_generate_slowcode != corrupt) {
+        HOT_STATE->rdram_generate_slowcode = corrupt;
+        HOT_STATE->rdram_corruption_changed = 1;
 #if !DISABLE_FASTMEM
-    if (corrupt) {
-        m_arena.UnmapFromMemoryRegion(m_physical_base + MM_RDRAM_DRAM, 0x1000);
-        m_arena.UnmapFromMemoryRegion(m_physical_base + MM_RDRAM_DRAM + R4300_KSEG0, 0x1000);
-        m_arena.UnmapFromMemoryRegion(m_physical_base + MM_RDRAM_DRAM + R4300_KSEG1, 0x1000);
-    } else {
-        if (m_arena.MapInMemoryRegion(m_rdram_position, RDRAM_MAX_SIZE, m_physical_base + MM_RDRAM_DRAM) != m_physical_base + MM_RDRAM_DRAM) {
-            abort();
-        }
+        if (corrupt) {
+            m_arena.UnmapFromMemoryRegion(m_physical_base + MM_RDRAM_DRAM, 0x1000);
+            m_arena.UnmapFromMemoryRegion(m_physical_base + MM_RDRAM_DRAM + R4300_KSEG0, 0x1000);
+            m_arena.UnmapFromMemoryRegion(m_physical_base + MM_RDRAM_DRAM + R4300_KSEG1, 0x1000);
+        } else {
+            if (m_arena.MapInMemoryRegion(m_rdram_position, RDRAM_MAX_SIZE, m_physical_base + MM_RDRAM_DRAM) != m_physical_base + MM_RDRAM_DRAM) {
+                abort();
+            }
 
-        if (m_arena.MapInMemoryRegion(m_rdram_position, RDRAM_MAX_SIZE, m_physical_base + MM_RDRAM_DRAM + R4300_KSEG0) != m_physical_base + MM_RDRAM_DRAM + R4300_KSEG0) {
-            abort();
-        }
+            if (m_arena.MapInMemoryRegion(m_rdram_position, RDRAM_MAX_SIZE, m_physical_base + MM_RDRAM_DRAM + R4300_KSEG0) != m_physical_base + MM_RDRAM_DRAM + R4300_KSEG0) {
+                abort();
+            }
 
-        if (m_arena.MapInMemoryRegion(m_rdram_position, RDRAM_MAX_SIZE, m_physical_base + MM_RDRAM_DRAM + R4300_KSEG1) != m_physical_base + MM_RDRAM_DRAM + R4300_KSEG1) {
-            abort();
+            if (m_arena.MapInMemoryRegion(m_rdram_position, RDRAM_MAX_SIZE, m_physical_base + MM_RDRAM_DRAM + R4300_KSEG1) != m_physical_base + MM_RDRAM_DRAM + R4300_KSEG1) {
+                abort();
+            }
         }
     }
 #endif

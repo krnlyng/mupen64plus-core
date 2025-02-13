@@ -78,6 +78,11 @@ static inline uint32_t vr4300_jitter_rdram_dram_address(uint32_t address)
         my_assert(op, arg, op->has_##arg && (op->fregsIn[op->arg])); \
     } while(0)
 
+#define VALIDATE_FIN_CONV(op, arg) \
+    do { \
+        my_assert(op, arg, op->has_##arg && (op->fregsIn[op->arg & ~1])); \
+    } while(0)
+
 #define VALIDATE_FIN_DOUBLE_NO_FR(op, arg) \
     do { \
         my_assert(op, arg, op->has_##arg && (op->fregsIn[op->arg & ~1])); \
@@ -96,6 +101,11 @@ static inline uint32_t vr4300_jitter_rdram_dram_address(uint32_t address)
 #define VALIDATE_FIN32(op, arg) \
     do { \
         my_assert(op, arg, op->has_##arg && (op->fregsIn32[op->arg])); \
+    } while(0)
+
+#define VALIDATE_FIN32_CONV(op, arg) \
+    do { \
+        my_assert(op, arg, op->has_##arg && (op->fregsIn32[op->arg & ~1])); \
     } while(0)
 
 #define VALIDATE_FOUT32(op, arg) \

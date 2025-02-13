@@ -97,11 +97,20 @@ public:
     only_32_bit = only_32bit;
   }
 
+  void SetFlushUpper(bool flush_upper)
+  {
+    m_flush_upper = flush_upper;
+  }
+
   bool Is32BitOnly() const
   {
     return only_32_bit;
   }
 
+  bool FlushUpper()
+  {
+    return m_flush_upper;
+  }
 
   bool IsRevertable() const { return revertable; }
   void SetRevertable()
@@ -137,6 +146,7 @@ private:
   bool revertable = false;
   size_t locked = 0;
   bool only_32_bit = false;
+  bool m_flush_upper = false;
 };
 
 class X64CachedReg
@@ -197,6 +207,7 @@ public:
   bool ShouldBeRevertable() const { return revertable; }
   bool ShouldKillImmediate() const { return kill_imm; }
   bool ShouldKillMemory() const { return kill_mem; }
+  bool ShouldFlushUpper() const { return m_flush_upper; }
 
   enum class RealizedLoc
   {
@@ -220,20 +231,26 @@ public:
     Any,
   };
 
-  void AddUse(RCMode mode, bool only_32bit) { AddConstraint(mode, ConstraintLoc::Any, false, only_32bit); }
-  void AddUseNoImm(RCMode mode) { AddConstraint(mode, ConstraintLoc::BoundOrMem, false, false); }
-  void AddBindOrImm(RCMode mode) { AddConstraint(mode, ConstraintLoc::BoundOrImm, false, false); }
-  void AddBind(RCMode mode, bool only_32bit) { AddConstraint(mode, ConstraintLoc::Bound, false, only_32bit); }
-  void AddRevertableBind(RCMode mode, bool only_32bit) { AddConstraint(mode, ConstraintLoc::Bound, true, only_32bit); }
+  void AddUse(RCMode mode, bool only_32bit) { AddConstraint(mode, ConstraintLoc::Any, false, only_32bit, false); }
+  void AddUseNoImm(RCMode mode) { AddConstraint(mode, ConstraintLoc::BoundOrMem, false, false, false); }
+  void AddBindOrImm(RCMode mode, bool flush_upper) { AddConstraint(mode, ConstraintLoc::BoundOrImm, false, false, flush_upper); }
+  void AddBind(RCMode mode, bool only_32bit, bool flush_upper) { AddConstraint(mode, ConstraintLoc::Bound, false, only_32bit, flush_upper); }
+  void AddRevertableBind(RCMode mode, bool only_32bit, bool flush_upper) { AddConstraint(mode, ConstraintLoc::Bound, true, only_32bit, flush_upper); }
 
 private:
-  void AddConstraint(RCMode mode, ConstraintLoc loc, bool should_revertable, bool only_32bit)
+  void AddConstraint(RCMode mode, ConstraintLoc loc, bool should_revertable, bool only_32bit, bool flush_upper)
   {
+    if (!flush_upper) {
+      m_flush_upper = flush_upper;
+    }
+
     if (IsRealized())
     {
       ASSERT(IsCompatible(mode, loc, should_revertable, only_32bit));
       return;
     }
+
+    m_flush_upper = flush_upper;
 
     only_32_bit = only_32bit;
 
@@ -331,4 +348,5 @@ private:
   bool kill_mem = false;
   bool revertable = false;
   bool only_32_bit = false;
+  bool m_flush_upper = false;
 };

@@ -7,8 +7,11 @@
 
 #include "../regs.h"
 #include "../vr4300_jitter_instruction_decoder.h"
+#include "../vr4300_jitter_internal.h"
 
 using namespace Gen;
+
+alignas(16) static const __m128i double_zero = _mm_set_epi64x(0, 0);
 
 FPURegCache::FPURegCache() : RegCache{}
 {
@@ -26,9 +29,20 @@ void FPURegCache::LoadRegister(preg_t preg, X64Reg new_loc)
   m_emitter->MOVSD(new_loc, m_regs[preg].Location().value());
 }
 
-void FPURegCache::StoreRegister32(preg_t preg, const OpArg& new_loc)
+void FPURegCache::StoreRegister32(preg_t preg, const OpArg& new_loc, bool flush_upper)
 {
   ASSERT_MSG(DYNA_REC, m_regs[preg].IsBound(), "Unbound register - %d", preg);
+  if (flush_upper) {
+    VR4300_Jitter *jitter = VR4300_Jitter::GetInstance();
+//    m_emitter->PXOR(XMM2, R(XMM2));
+    m_emitter->MOVSD(XMM2, jitter->MConst(double_zero));
+    if (HOT_STATE->fr_is_set) {
+        m_emitter->MOVSS(HOTSTATE_CP1REG32FR_OTHER(preg), XMM2);
+    } else {
+        m_emitter->MOVSS(HOTSTATE_CP1REG32NOFR_OTHER(preg), XMM2);
+    }
+//    m_emitter->MOVSD(new_loc, XMM2);
+  }
   m_emitter->MOVSS(new_loc, m_regs[preg].Location()->GetSimpleReg());
 }
 
@@ -49,7 +63,7 @@ void FPURegCache::LoadRegister32(preg_t preg, X64Reg new_loc)
 const X64Reg* FPURegCache::GetAllocationOrder(size_t* count) const
 {
   static const X64Reg allocation_order[] = {XMM6,  XMM7,  XMM8,  XMM9, XMM10, XMM11, XMM12,
-                                            XMM13, XMM14, XMM15, XMM2, XMM3,  XMM4,  XMM5};
+                                            XMM13, XMM14, XMM15, XMM3,  XMM4,  XMM5};
   *count = sizeof(allocation_order) / sizeof(X64Reg);
   return allocation_order;
 }
