@@ -13,10 +13,14 @@ public:
 protected:
   Gen::OpArg GetDefaultLocation(preg_t preg) const override;
   Gen::OpArg GetDefaultLocation32(preg_t preg) const override;
+  Gen::OpArg GetDefaultLocation32s(preg_t preg) const override;
+  Gen::OpArg GetDefaultLocation32d(preg_t preg) const override;
+  Gen::OpArg GetDefaultLocation32f(preg_t preg) const override;
   void StoreRegister(preg_t preg, const Gen::OpArg& newLoc) override;
   void LoadRegister(preg_t preg, Gen::X64Reg newLoc) override;
   void StoreRegister32(preg_t preg, const Gen::OpArg& newLoc, bool flush_upper) override;
-  void LoadRegister32(preg_t preg, Gen::X64Reg newLoc) override;
+  void LoadRegister32(preg_t preg, Gen::X64Reg newLoc, bool is_s_use, bool is_f_use) override;
+  void FlushUpper(preg_t preg) override;
   const Gen::X64Reg* GetAllocationOrder(size_t* count) const override;
   BitSet32 GetRegUtilization() const override;
   BitSet32 CountRegsIn(preg_t preg, u32 lookahead) const override;

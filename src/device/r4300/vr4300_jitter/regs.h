@@ -44,6 +44,8 @@ constexpr Gen::X64Reg RDRAM = Gen::RBX;
 
 #define HOTSTATE_OFF_CP0REG(i) HOTSTATE_OFF_ARRAY(cp0_regs, i)
 #define HOTSTATE_OFF_CP1REG(i) (HOTSTATE_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float64))
+#define HOTSTATE_OFF_CP1REG32_LOWER(i) (HOTSTATE_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float32) + sizeof(float) * DOUBLE_HALF_XOR)
+#define HOTSTATE_OFF_CP1REG32_UPPER(i) (HOTSTATE_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float32) + sizeof(float) * (DOUBLE_HALF_XOR ^ 1))
 #define HOTSTATE_OFF_CP1REG32FR(i) (HOTSTATE_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float32) + sizeof(float) * DOUBLE_HALF_XOR)
 #define HOTSTATE_OFF_CP1REG32NOFR(i) (HOTSTATE_OFF_ARRAY(cp1_regs, (i) & ~1) + offsetof(cp1_reg, float32) + sizeof(float) * (((i) & 1) ^ DOUBLE_HALF_XOR))
 #define HOTSTATE_OFF_CP1REG32FR_TMP(i) (HOTSTATE_OFF_ARRAY(fprs_tmp, i) + offsetof(cp1_reg, float32) + sizeof(float) * DOUBLE_HALF_XOR)
@@ -53,6 +55,8 @@ constexpr Gen::X64Reg RDRAM = Gen::RBX;
 
 #define HOTSTATE2_OFF_CP0REG(i) HOTSTATE2_OFF_ARRAY(cp0_regs, i)
 #define HOTSTATE2_OFF_CP1REG(i) (HOTSTATE2_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float64))
+#define HOTSTATE2_OFF_CP1REG32_LOWER(i) (HOTSTATE2_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float32) + sizeof(float) * DOUBLE_HALF_XOR)
+#define HOTSTATE2_OFF_CP1REG32_UPPER(i) (HOTSTATE2_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float32) + sizeof(float) * (DOUBLE_HALF_XOR ^ 1))
 #define HOTSTATE2_OFF_CP1REG32FR(i) (HOTSTATE2_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float32) + sizeof(float) * DOUBLE_HALF_XOR)
 #define HOTSTATE2_OFF_CP1REG32NOFR(i) (HOTSTATE2_OFF_ARRAY(cp1_regs, (i) & ~1) + offsetof(cp1_reg, float32) + sizeof(float) * (((i) & 1) ^ DOUBLE_HALF_XOR))
 #define HOTSTATE2_OFF_CP1REG32FR_OTHER(i) (HOTSTATE2_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float32) + sizeof(float) * (DOUBLE_HALF_XOR ^ 1))
@@ -62,6 +66,8 @@ constexpr Gen::X64Reg RDRAM = Gen::RBX;
 
 #define HOTSTATE3_OFF_CP0REG(i) HOTSTATE3_OFF_ARRAY(cp0_regs, i)
 #define HOTSTATE3_OFF_CP1REG(i) (HOTSTATE3_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float64))
+#define HOTSTATE3_OFF_CP1REG32_LOWER(i) (HOTSTATE3_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float32) + sizeof(float) * DOUBLE_HALF_XOR)
+#define HOTSTATE3_OFF_CP1REG32_UPPER(i) (HOTSTATE3_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float32) + sizeof(float) * (DOUBLE_HALF_XOR ^ 1))
 #define HOTSTATE3_OFF_CP1REG32FR(i) (HOTSTATE3_OFF_ARRAY(cp1_regs, i) + offsetof(cp1_reg, float32) + sizeof(float) * DOUBLE_HALF_XOR)
 #define HOTSTATE3_OFF_CP1REG32NOFR(i) (HOTSTATE3_OFF_ARRAY(cp1_regs, (i) & ~1) + offsetof(cp1_reg, float32) + sizeof(float) * (((i) & 1) ^ DOUBLE_HALF_XOR))
 #define HOTSTATE3_OFF_CP1REG32FR_TMP(i) (HOTSTATE3_OFF_ARRAY(fprs_tmp, i) + offsetof(cp1_reg, float32) + sizeof(float) * DOUBLE_HALF_XOR)
@@ -85,6 +91,8 @@ constexpr Gen::X64Reg RDRAM = Gen::RBX;
 #define HOTSTATE_ARRAY(elem, i) RHOTSTATE_DISP(HOTSTATE_OFF_ARRAY(elem, i), HOTSTATE2_OFF_ARRAY(elem, i), HOTSTATE3_OFF_ARRAY(elem, i))
 
 #define HOTSTATE_CP1REG32FR(i) RHOTSTATE_DISP(HOTSTATE_OFF_CP1REG32FR(i), HOTSTATE2_OFF_CP1REG32FR(i), HOTSTATE3_OFF_CP1REG32FR(i))
+#define HOTSTATE_CP1REG32_LOWER(i) RHOTSTATE_DISP(HOTSTATE_OFF_CP1REG32_LOWER(i), HOTSTATE2_OFF_CP1REG32_LOWER(i), HOTSTATE3_OFF_CP1REG32_LOWER(i))
+#define HOTSTATE_CP1REG32_UPPER(i) RHOTSTATE_DISP(HOTSTATE_OFF_CP1REG32_UPPER(i), HOTSTATE2_OFF_CP1REG32_UPPER(i), HOTSTATE3_OFF_CP1REG32_UPPER(i))
 #define HOTSTATE_CP1REG32NOFR(i) RHOTSTATE_DISP(HOTSTATE_OFF_CP1REG32NOFR(i), HOTSTATE2_OFF_CP1REG32NOFR(i), HOTSTATE3_OFF_CP1REG32NOFR(i))
 #define HOTSTATE_CP1REG32FR_TMP(i) RHOTSTATE_DISP(HOTSTATE_OFF_CP1REG32FR_TMP(i), HOTSTATE2_OFF_CP1REG32FR_TMP(i), HOTSTATE3_OFF_CP1REG32FR_TMP(i))
 #define HOTSTATE_CP1REG32NOFR_TMP(i) RHOTSTATE_DISP(HOTSTATE_OFF_CP1REG32NOFR_TMP(i), HOTSTATE2_OFF_CP1REG32NOFR_TMP(i), HOTSTATE3_OFF_CP1REG32NOFR_TMP(i))

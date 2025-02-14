@@ -54,6 +54,21 @@ OpArg GPRRegCache::GetDefaultLocation32(preg_t preg) const
   return HOTSTATE_REG(preg);
 }
 
+OpArg GPRRegCache::GetDefaultLocation32s(preg_t preg) const
+{
+  return HOTSTATE_REG(preg);
+}
+
+OpArg GPRRegCache::GetDefaultLocation32d(preg_t preg) const
+{
+  return HOTSTATE_REG(preg);
+}
+
+OpArg GPRRegCache::GetDefaultLocation32f(preg_t preg) const
+{
+  return HOTSTATE_REG(preg);
+}
+
 const X64Reg* GPRRegCache::GetAllocationOrder(size_t* count) const
 {
   static const X64Reg allocation_order[] = {
@@ -106,7 +121,12 @@ void GPRRegCache::StoreRegister32(preg_t preg, const OpArg& new_loc, bool flush_
     abort();
 }
 
-void GPRRegCache::LoadRegister32(preg_t preg, X64Reg new_loc)
+void GPRRegCache::LoadRegister32(preg_t preg, X64Reg new_loc, bool is_s_use, bool is_f_use)
+{
+    abort();
+}
+
+void GPRRegCache::FlushUpper(preg_t preg)
 {
     abort();
 }

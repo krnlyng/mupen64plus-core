@@ -52,6 +52,7 @@ struct jit_instr {
     BitSet32 fregsOut32 = BitSet32::AllTrue(0);
     BitSet32 fregsIncompatible = BitSet32::AllTrue(0);
     BitSet32 fregsIncompatible32 = BitSet32::AllTrue(0);
+    BitSet32 fregsSUseIncompatible = BitSet32::AllTrue(0);
     bool modifies_count_reg = false;
     bool modifies_status_reg = false;
     // fmt - operand format (float)
@@ -245,7 +246,7 @@ union vr4300_instruction {
     };
     struct {
         uint32_t CFC1_opcode_0_10 : 11; // 0
-        uint32_t CFC1_d : 5; // 0
+        uint32_t CFC1_s : 5; // 0
         uint32_t CFC1_t : 5; // 0
         uint32_t CFC1_opcode_21_31 : 11; // 546
     };
@@ -269,7 +270,7 @@ union vr4300_instruction {
     };
     struct {
         uint32_t CTC1_opcode_0_10 : 11; // 0
-        uint32_t CTC1_d : 5; // 0
+        uint32_t CTC1_s : 5; // 0
         uint32_t CTC1_t : 5; // 0
         uint32_t CTC1_opcode_21_31 : 11; // 550
     };
@@ -343,7 +344,7 @@ union vr4300_instruction {
     };
     struct {
         uint32_t DMFC1_opcode_0_10 : 11; // 0
-        uint32_t DMFC1_d : 5; // 0
+        uint32_t DMFC1_s : 5; // 0
         uint32_t DMFC1_t : 5; // 0
         uint32_t DMFC1_opcode_21_31 : 11; // 545
     };
@@ -367,7 +368,7 @@ union vr4300_instruction {
     };
     struct {
         uint32_t DCFC1_opcode_0_10 : 11; // 0
-        uint32_t DCFC1_d : 5; // 0
+        uint32_t DCFC1_s : 5; // 0
         uint32_t DCFC1_t : 5; // 0
         uint32_t DCFC1_opcode_21_31 : 11; // 547
     };
@@ -391,7 +392,7 @@ union vr4300_instruction {
     };
     struct {
         uint32_t DMTC1_opcode_0_10 : 11; // 0
-        uint32_t DMTC1_d : 5; // 0
+        uint32_t DMTC1_s : 5; // 0
         uint32_t DMTC1_t : 5; // 0
         uint32_t DMTC1_opcode_21_31 : 11; // 549
     };
@@ -415,7 +416,7 @@ union vr4300_instruction {
     };
     struct {
         uint32_t DCTC1_opcode_0_10 : 11; // 0
-        uint32_t DCTC1_d : 5; // 0
+        uint32_t DCTC1_s : 5; // 0
         uint32_t DCTC1_t : 5; // 0
         uint32_t DCTC1_opcode_21_31 : 11; // 551
     };
@@ -634,7 +635,7 @@ union vr4300_instruction {
     };
     struct {
         uint32_t MFC1_opcode_0_10 : 11; // 0
-        uint32_t MFC1_d : 5; // 0
+        uint32_t MFC1_s : 5; // 0
         uint32_t MFC1_t : 5; // 0
         uint32_t MFC1_opcode_21_31 : 11; // 544
     };
@@ -668,7 +669,7 @@ union vr4300_instruction {
     };
     struct {
         uint32_t MTC1_opcode_0_10 : 11; // 0
-        uint32_t MTC1_d : 5; // 0
+        uint32_t MTC1_s : 5; // 0
         uint32_t MTC1_t : 5; // 0
         uint32_t MTC1_opcode_21_31 : 11; // 548
     };

@@ -159,9 +159,12 @@ public:
   s64 SImm64(preg_t preg) const { return R(preg).SImm64(); }
 
   RCOpArg Use(preg_t preg, RCMode mode, bool only_32bit = false);
+  RCOpArg UseF(preg_t preg, RCMode mode, bool only_32bit = false);
+  RCOpArg UseS(preg_t preg, RCMode mode, bool only_32bit = false);
   RCOpArg UseNoImm(preg_t preg, RCMode mode);
   RCOpArg BindOrImm(preg_t preg, RCMode mode, bool flush_upper = true);
   RCX64Reg Bind(preg_t preg, RCMode mode, bool only_32bit = false, bool flush_upper = true);
+  RCX64Reg BindS(preg_t preg, RCMode mode, bool only_32bit = false, bool flush_upper = true);
   RCX64Reg RevertableBind(preg_t preg, RCMode mode, bool only_32bit = false, bool flush_upper = true);
   RCX64Reg Scratch();
   RCX64Reg Scratch(Gen::X64Reg xr);
@@ -171,6 +174,7 @@ public:
   void Flush(BitSet32 pregs = BitSet32::AllTrue(32));
   void ConvertTo64(BitSet32 pregs);
   void ConvertTo32(BitSet32 pregs);
+  void FlushDifferentUse(BitSet32 pregs);
   void Reset(BitSet32 pregs);
   void Revert();
   void Commit();
@@ -184,7 +188,7 @@ public:
 
   bool IsAllUnlocked() const;
 
-  void PreloadRegisters(BitSet32 pregs, bool only_32bit);
+  void PreloadRegisters(BitSet32 pregs, bool only_32bit, bool is_s_use, bool is_f_use);
   BitSet32 RegistersInUse() const;
 
 protected:
@@ -196,10 +200,14 @@ protected:
 
   virtual Gen::OpArg GetDefaultLocation(preg_t preg) const = 0;
   virtual Gen::OpArg GetDefaultLocation32(preg_t preg) const = 0;
+  virtual Gen::OpArg GetDefaultLocation32s(preg_t preg) const = 0;
+  virtual Gen::OpArg GetDefaultLocation32d(preg_t preg) const = 0;
+  virtual Gen::OpArg GetDefaultLocation32f(preg_t preg) const = 0;
   virtual void StoreRegister(preg_t preg, const Gen::OpArg& new_loc) = 0;
   virtual void LoadRegister(preg_t preg, Gen::X64Reg new_loc) = 0;
   virtual void StoreRegister32(preg_t preg, const Gen::OpArg& new_loc, bool flush_upper) = 0;
-  virtual void LoadRegister32(preg_t preg, Gen::X64Reg new_loc) = 0;
+  virtual void LoadRegister32(preg_t preg, Gen::X64Reg new_loc, bool is_s_use, bool is_f_use) = 0;
+  virtual void FlushUpper(preg_t preg) = 0;
 
   virtual const Gen::X64Reg* GetAllocationOrder(size_t* count) const = 0;
 
@@ -208,7 +216,7 @@ protected:
 
   void FlushX(Gen::X64Reg reg);
   void DiscardRegContentsIfCached(preg_t preg);
-  void BindToRegister(preg_t preg, bool doLoad = true, bool makeDirty = true, bool only_32bit = false, bool flush_upper = true);
+  void BindToRegister(preg_t preg, bool doLoad, bool makeDirty, bool only_32bit, bool flush_upper, bool is_s_use, bool is_f_use);
   void StoreFromRegister(preg_t preg, FlushMode mode = FlushMode::Full);
 
   Gen::X64Reg GetFreeXReg();

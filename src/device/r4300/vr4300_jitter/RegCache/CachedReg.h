@@ -32,13 +32,16 @@ public:
 
   VR4300CachedReg() = default;
 
-  explicit VR4300CachedReg(Gen::OpArg default_location_, Gen::OpArg default_location32_)
-      : default_location(default_location_), default_location32(default_location32_), location(default_location_)
+  explicit VR4300CachedReg(Gen::OpArg default_location_, Gen::OpArg default_location32_, Gen::OpArg default_location32s_, Gen::OpArg default_location32d_, Gen::OpArg default_location32f_)
+      : default_location(default_location_), default_location32(default_location32_), default_location32s(default_location32s_), default_location32d(default_location32d_), default_location32f(default_location32f_), location(default_location_)
   {
   }
 
   const std::optional<Gen::OpArg>& Location() const { return location; }
   const Gen::OpArg& DefaultLocation32() const { return default_location32; }
+  const Gen::OpArg& DefaultLocation32s() const { return default_location32s; }
+  const Gen::OpArg& DefaultLocation32d() const { return default_location32d; }
+  const Gen::OpArg& DefaultLocation32f() const { return default_location32f; }
 
   LocationType GetLocationType() const
   {
@@ -112,6 +115,26 @@ public:
     return m_flush_upper;
   }
 
+  bool IsSUse() const
+  {
+    return m_is_s_use;
+  }
+
+  void SetIsSUse(bool is_s_use)
+  {
+    m_is_s_use = is_s_use;
+  }
+
+  bool IsFUse() const
+  {
+    return m_is_f_use;
+  }
+
+  void SetIsFUse(bool is_f_use)
+  {
+    m_is_f_use = is_f_use;
+  }
+
   bool IsRevertable() const { return revertable; }
   void SetRevertable()
   {
@@ -141,12 +164,17 @@ public:
 private:
   Gen::OpArg default_location{};
   Gen::OpArg default_location32{};
+  Gen::OpArg default_location32s{};
+  Gen::OpArg default_location32d{};
+  Gen::OpArg default_location32f{};
   std::optional<Gen::OpArg> location{};
   bool away = false;  // value not in source register
   bool revertable = false;
   size_t locked = 0;
   bool only_32_bit = false;
   bool m_flush_upper = false;
+  bool m_is_s_use = false;
+  bool m_is_f_use = false;
 };
 
 class X64CachedReg
@@ -208,6 +236,8 @@ public:
   bool ShouldKillImmediate() const { return kill_imm; }
   bool ShouldKillMemory() const { return kill_mem; }
   bool ShouldFlushUpper() const { return m_flush_upper; }
+  bool IsSUse() const { return m_is_s_use; }
+  bool IsFUse() const { return m_is_f_use; }
 
   enum class RealizedLoc
   {
@@ -231,25 +261,26 @@ public:
     Any,
   };
 
-  void AddUse(RCMode mode, bool only_32bit) { AddConstraint(mode, ConstraintLoc::Any, false, only_32bit, false); }
-  void AddUseNoImm(RCMode mode) { AddConstraint(mode, ConstraintLoc::BoundOrMem, false, false, false); }
-  void AddBindOrImm(RCMode mode, bool flush_upper) { AddConstraint(mode, ConstraintLoc::BoundOrImm, false, false, flush_upper); }
-  void AddBind(RCMode mode, bool only_32bit, bool flush_upper) { AddConstraint(mode, ConstraintLoc::Bound, false, only_32bit, flush_upper); }
-  void AddRevertableBind(RCMode mode, bool only_32bit, bool flush_upper) { AddConstraint(mode, ConstraintLoc::Bound, true, only_32bit, flush_upper); }
+  void AddUse(RCMode mode, bool only_32bit) { AddConstraint(mode, ConstraintLoc::Any, false, only_32bit, false, false, false); }
+  void AddUseF(RCMode mode, bool only_32bit) { AddConstraint(mode, ConstraintLoc::Any, false, only_32bit, false, false, true); }
+  void AddUseS(RCMode mode, bool only_32bit) { AddConstraint(mode, ConstraintLoc::Any, false, only_32bit, false, true, false); }
+  void AddUseNoImm(RCMode mode) { AddConstraint(mode, ConstraintLoc::BoundOrMem, false, false, false, false, false); }
+  void AddBindOrImm(RCMode mode, bool flush_upper) { AddConstraint(mode, ConstraintLoc::BoundOrImm, false, false, flush_upper, false, false); }
+  void AddBind(RCMode mode, bool only_32bit, bool flush_upper) { AddConstraint(mode, ConstraintLoc::Bound, false, only_32bit, flush_upper, false, false); }
+  void AddBindS(RCMode mode, bool only_32bit, bool flush_upper) { AddConstraint(mode, ConstraintLoc::Bound, false, only_32bit, flush_upper, true, false); }
+  void AddRevertableBind(RCMode mode, bool only_32bit, bool flush_upper) { AddConstraint(mode, ConstraintLoc::Bound, true, only_32bit, flush_upper, false, false); }
 
 private:
-  void AddConstraint(RCMode mode, ConstraintLoc loc, bool should_revertable, bool only_32bit, bool flush_upper)
+  void AddConstraint(RCMode mode, ConstraintLoc loc, bool should_revertable, bool only_32bit, bool flush_upper, bool is_s_use, bool is_f_use)
   {
-    if (!flush_upper) {
-      m_flush_upper = flush_upper;
-    }
-
     if (IsRealized())
     {
-      ASSERT(IsCompatible(mode, loc, should_revertable, only_32bit));
+      ASSERT(IsCompatible(mode, loc, should_revertable, only_32bit, flush_upper, is_s_use, is_f_use));
       return;
     }
 
+    m_is_s_use = is_s_use;
+    m_is_f_use = is_f_use;
     m_flush_upper = flush_upper;
 
     only_32_bit = only_32bit;
@@ -288,9 +319,27 @@ private:
     }
   }
 
-  bool IsCompatible(RCMode mode, ConstraintLoc loc, bool should_revertable, bool only_32bit) const
+  bool IsCompatible(RCMode mode, ConstraintLoc loc, bool should_revertable, bool only_32bit, bool flush_upper, bool is_s_use, bool is_f_use) const
   {
     if (should_revertable && !revertable)
+    {
+      ASSERT(false);
+      return false;
+    }
+
+    if (m_is_s_use != is_s_use)
+    {
+      ASSERT(false);
+      return false;
+    }
+
+    if (m_is_f_use != is_f_use)
+    {
+      ASSERT(false);
+      return false;
+    }
+
+    if (m_flush_upper != flush_upper)
     {
       ASSERT(false);
       return false;
@@ -349,4 +398,6 @@ private:
   bool revertable = false;
   bool only_32_bit = false;
   bool m_flush_upper = false;
+  bool m_is_s_use = false;
+  bool m_is_f_use = false;
 };
