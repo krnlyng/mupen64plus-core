@@ -722,11 +722,10 @@ void VR4300_Jitter::recompile_FLOOR_W_S(struct jit_instr *op)
 
         RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RCOpArg scratch = m_gpr.Scratch();
-        RCX64Reg scratch3 = m_fpr.Scratch();
-        RegCache::Realize(Rd, scratch, scratch3);
+        RegCache::Realize(Rd, scratch);
 
-        ROUNDSS(scratch3, R(XMM0), 0x1);
-        CVTTSS2SI(scratch.GetSimpleReg(), scratch3);
+        ROUNDSS(XMM0, R(XMM0), 0x1);
+        CVTTSS2SI(scratch.GetSimpleReg(), R(XMM0));
         MOVD_xmm(Rd, scratch);
     }
     compile_fpu_check_exceptions(op, true);
@@ -1159,11 +1158,13 @@ void VR4300_Jitter::recompile_CEIL_L_S(struct jit_instr *op)
 
     {
         RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
-        RegCache::Realize(Rd);
+        RCOpArg gprscratch = m_gpr.Scratch();
+        RegCache::Realize(Rd, gprscratch);
 
-        // ceil_l_s, untested
-        ROUNDSS(Rd, R(XMM0), 0x2);
-        PAND(Rd, MConst(double_low_bits));
+        // ceil_l_s
+        ROUNDSS(XMM0, R(XMM0), 0x2);
+        CVTSS2SI(gprscratch.GetSimpleReg(), R(XMM0));
+        MOVQ_xmm(Rd, gprscratch);
     }
 
     compile_fpu_check_exceptions(op, false);
@@ -1752,10 +1753,14 @@ void VR4300_Jitter::recompile_CVT_W_S(struct jit_instr *op)
             MOVD_xmm(Rd, gprscratch);
         },{
             // ceil_w_s, untested
-            ROUNDSS(Rd, R(XMM0), 0x2);
+            ROUNDSS(XMM0, R(XMM0), 0x2);
+            CVTTSS2SI(gprscratch.GetSimpleReg(), R(XMM0));
+            MOVD_xmm(Rd, gprscratch);
         },{
             // floor_w_s, untested
-            ROUNDSS(Rd, R(XMM0), 0x1);
+            ROUNDSS(XMM0, R(XMM0), 0x1);
+            CVTTSS2SI(gprscratch.GetSimpleReg(), R(XMM0));
+            MOVD_xmm(Rd, gprscratch);
         });
     }
 
@@ -1779,25 +1784,28 @@ void VR4300_Jitter::recompile_CVT_L_S(struct jit_instr *op)
 
     {
         RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
-        RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
-        RegCache::Realize(Rd, scratch2, gprscratch);
+        RegCache::Realize(Rd, gprscratch);
 
         PERFORM_FLOAT_OPERATION_WITH_ROUNDING_MODE({
-            // round_l_s, untested
-            ROUNDSD(scratch2, R(XMM0), 0x0);
-            CVTSS2SI(gprscratch.GetSimpleReg(), scratch2);
+            // round_l_s
+            ROUNDSS(XMM0, R(XMM0), 0x0);
+            CVTSS2SI(gprscratch.GetSimpleReg(), R(XMM0));
             MOVQ_xmm(Rd, gprscratch);
         },{
             // trunc_l_s, untested
             CVTTSS2SI64(gprscratch.GetSimpleReg(), R(XMM0));
             MOVQ_xmm(Rd, gprscratch);
         },{
-            // ceil_l_s, untested
-            ROUNDSS(Rd, R(XMM0), 0x2);
+            // ceil_l_s
+            ROUNDSS(XMM0, R(XMM0), 0x2);
+            CVTSS2SI(gprscratch.GetSimpleReg(), R(XMM0));
+            MOVQ_xmm(Rd, gprscratch);
         },{
-            // floor_l_s, untested
-            ROUNDSS(Rd, R(XMM0), 0x1);
+            // floor_l_s
+            ROUNDSS(XMM0, R(XMM0), 0x1);
+            CVTSS2SI(gprscratch.GetSimpleReg(), R(XMM0));
+            MOVQ_xmm(Rd, gprscratch);
         });
     }
 
@@ -1934,8 +1942,8 @@ void VR4300_Jitter::recompile_ROUND_L_S(struct jit_instr *op)
         RCOpArg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, scratch2, gprscratch);
 
-        // round_l_s, untested
-        ROUNDSD(scratch2, R(XMM0), 0x0);
+        // round_l_s
+        ROUNDSS(scratch2, R(XMM0), 0x0);
         CVTSS2SI(gprscratch.GetSimpleReg(), scratch2);
         MOVD_xmm(Rd, gprscratch);
 
@@ -2506,12 +2514,13 @@ void VR4300_Jitter::recompile_FLOOR_L_S(struct jit_instr *op)
 
     {
         RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
-        RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
-        RegCache::Realize(Rd, scratch2, gprscratch);
+        RegCache::Realize(Rd, gprscratch);
 
-        // floor_l_s, untested
-        ROUNDSS(Rd, R(XMM0), 0x1);
+        // floor_l_s
+        ROUNDSS(XMM0, R(XMM0), 0x1);
+        CVTSS2SI(gprscratch.GetSimpleReg(), R(XMM0));
+        MOVQ_xmm(Rd, gprscratch);
     }
 
     compile_fpu_check_exceptions(op, false);
