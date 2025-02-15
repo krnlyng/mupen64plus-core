@@ -930,10 +930,11 @@ void VR4300_Jitter::compile_fpu_inexact_check_32(struct jit_instr *op)
         MOVD_xmm(R(gprscratch1), XMM0);
         MOVD_xmm(R(gprscratch2), XMM1);
 
-        CMP(64, R(gprscratch1), R(gprscratch2));
+        CMP(32, R(gprscratch1), R(gprscratch2));
     }
 
     FixupBranch eq = J_CC(CC_E, XEmitter::Jump::Near);
+    OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INEXACT_BIT));
 
     TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_ENABLE_INEXACT_BIT));
     FixupBranch no_INEXACT_fpe = J_CC(CC_Z, XEmitter::Jump::Near);
@@ -958,6 +959,7 @@ void VR4300_Jitter::compile_fpu_inexact_check_64(struct jit_instr *op)
     }
 
     FixupBranch eq = J_CC(CC_E, XEmitter::Jump::Near);
+    OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INEXACT_BIT));
 
     TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_ENABLE_INEXACT_BIT));
     FixupBranch no_INEXACT_fpe = J_CC(CC_Z, XEmitter::Jump::Near);
