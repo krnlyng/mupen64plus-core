@@ -2044,7 +2044,7 @@ void VR4300_Jitter::recompile_CVT_D_L(struct jit_instr *op)
         RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write);
         RegCache::Realize(Rd);
 
-        CVTSI2SD(Rd, R(RSCRATCH));
+        CVTSI2SD64(Rd, R(RSCRATCH));
 
         compile_fpu_store_output_double_for_check(op, Rd);
     }
