@@ -838,17 +838,25 @@ void VR4300_Jitter::recompile_CVT_S_W(struct jit_instr *op)
     VALIDATE_FIN32_CONV(op, s);
     VALIDATE_FOUT32(op, d);
 
-    {
-        RCX64Reg Rd = m_fpr.RevertableBind(op->d, (((HOT_STATE->fr_is_set ? op->s : (op->s & ~1))) == op->d) ? RCMode::ReadWrite : RCMode::Write, true);
-        RCX64Reg gprscratch = m_gpr.Scratch();
-        RegCache::Realize(Rd, gprscratch);
 
-        compile_fpu_reset_cause(op);
-        compile_fpu_reset_exceptions(op);
+    compile_fpu_reset_cause(op);
+    compile_fpu_reset_exceptions(op);
+
+    {
+        RCX64Reg gprscratch = m_gpr.Scratch();
+        RegCache::Realize(gprscratch);
 
         load_cop1_register_to_host_register_s(op, 32, ((HOT_STATE->fr_is_set ? op->s : (op->s & ~1))), gprscratch);
 
-        CVTSI2SS(Rd, R(gprscratch));
+        MOV(32, R(RSCRATCH), R(gprscratch));
+    }
+
+    {
+        RCX64Reg Rd = m_fpr.RevertableBind(op->d, (((HOT_STATE->fr_is_set ? op->s : (op->s & ~1))) == op->d) ? RCMode::ReadWrite : RCMode::Write, true);
+        RCX64Reg gprscratch = m_gpr.Scratch();
+        RegCache::Realize(Rd);
+
+        CVTSI2SS(Rd, R(RSCRATCH));
 
         compile_fpu_store_output_float_for_check(op, Rd);
     }
@@ -1182,16 +1190,20 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
         VALIDATE_FIN_S(op, s);
     }
 
-    RCOpArg Rs = (op->a == 0x10 || op->a == 0x14) ? m_fpr.UseS(op->s, RCMode::Read, true) : m_fpr.Use((HOT_STATE->fr_is_set ? op->s : (op->s & ~1)), RCMode::Read);
-    RCOpArg Rt = m_fpr.Use(op->t, RCMode::Read, op->a == 0x10 || op->a == 0x14);
-
-    RegCache::Realize(Rs, Rt);
-
     if (op->a == 0x10 || op->a == 0x14) {
+        RCOpArg Rs = m_fpr.UseS(op->s, RCMode::Read, true);
+        RegCache::Realize(Rs);
+
         MOVSS(XMM0, Rs);
     } else {
+        RCOpArg Rs = m_fpr.Use((HOT_STATE->fr_is_set ? op->s : (op->s & ~1)), RCMode::Read);
+        RegCache::Realize(Rs);
+
         MOVSD(XMM0, Rs);
     }
+
+    RCOpArg Rt = (op->a == 0x10 || op->a == 0x14) ? m_fpr.UseF(op->t, RCMode::Read, true) : m_fpr.Use(op->t, RCMode::Read);
+    RegCache::Realize(Rt);
 
     compile_fpu_reset_cause(op);
 
