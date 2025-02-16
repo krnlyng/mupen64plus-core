@@ -104,6 +104,7 @@ void VR4300_Jitter::compile_fpu_check_exceptions(struct jit_instr *op, bool conv
 {
 #ifdef ACCURATE_FPU_BEHAVIOR
     BitSet32 registers_in_use = caller_saved_registers_in_use();
+    registers_in_use[XMM0 + 16] = true; // used in float/double inexact checks!
     registers_in_use[XMM1 + 16] = true; // used in float/double checks!
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
     ABI_CallFunctionC(fetestexcept, FE_ALL_EXCEPT);
@@ -836,10 +837,11 @@ void VR4300_Jitter::recompile_TRUNC_L_S(struct jit_instr *op)
         CVTTSS2SI64(gprscratch, R(XMM0));
         MOVQ_xmm(Rd, R(gprscratch));
 
-        compile_fpu_store_output_float_for_check(op, Rd);
+        compile_fpu_store_output_double_for_check(op, Rd);
     }
 
     compile_fpu_check_exceptions(op, false);
+
     compile_fpu_inexact_check_input_64_output_float(op);
 }
 
