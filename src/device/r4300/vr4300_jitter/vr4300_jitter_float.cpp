@@ -700,7 +700,7 @@ void VR4300_Jitter::recompile_TRUNC_W_S(struct jit_instr *op)
         compile_fpu_store_output_float_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_32(op);
+    compile_fpu_inexact_check_input_32_output_float(op);
     compile_fpu_check_exceptions(op, true);
 }
 
@@ -710,15 +710,16 @@ void VR4300_Jitter::recompile_FLOOR_W_S(struct jit_instr *op)
     VALIDATE_FOUT32(op, d);
 
     {
-        {
-            RCOpArg Rs = m_fpr.Use((HOT_STATE->fr_is_set ? op->s : (op->s & ~1)), RCMode::Read, true);
-            RegCache::Realize(Rs);
-            MOVSS(XMM0, Rs);
-        }
+        RCOpArg Rs = m_fpr.Use((HOT_STATE->fr_is_set ? op->s : (op->s & ~1)), RCMode::Read, true);
+        RegCache::Realize(Rs);
+        MOVSS(XMM0, Rs);
+    }
 
-        compile_fpu_reset_cause(op);
-        compile_fpu_check_input_float_conv_32(op);
-        compile_fpu_reset_exceptions(op);
+    compile_fpu_reset_cause(op);
+    compile_fpu_check_input_float_conv_32(op);
+    compile_fpu_reset_exceptions(op);
+
+    {
 
         RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
         RCOpArg scratch = m_gpr.Scratch();
@@ -806,7 +807,7 @@ void VR4300_Jitter::recompile_TRUNC_W_D(struct jit_instr *op)
         compile_fpu_store_output_double_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_64(op);
+    compile_fpu_inexact_check_input_64_output_double(op);
     compile_fpu_check_exceptions(op, true);
 }
 
@@ -835,7 +836,7 @@ void VR4300_Jitter::recompile_TRUNC_L_S(struct jit_instr *op)
         compile_fpu_store_output_float_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_32(op);
+    compile_fpu_inexact_check_input_64_output_float(op);
     compile_fpu_check_exceptions(op, false);
 }
 
@@ -921,17 +922,12 @@ void VR4300_Jitter::compile_fpu_unimplemented_check_RSCRATCH(struct jit_instr *o
 #endif
 }
 
-void VR4300_Jitter::compile_fpu_inexact_check_32(struct jit_instr *op)
+void VR4300_Jitter::compile_fpu_inexact_check_input_32_output_float(struct jit_instr *op)
 {
-    {
-        RCX64Reg gprscratch1 = m_gpr.Scratch(), gprscratch2 = m_gpr.Scratch();
-        RegCache::Realize(gprscratch1, gprscratch2);
-
-        MOVD_xmm(R(gprscratch1), XMM0);
-        MOVD_xmm(R(gprscratch2), XMM1);
-
-        CMP(32, R(gprscratch1), R(gprscratch2));
-    }
+#ifdef ACCURATE_FPU_BEHAVIOR
+    MOVD_xmm(R(RSCRATCH), XMM1);
+    CVTSI2SS(XMM1, R(RSCRATCH));
+    UCOMISS(XMM0, R(XMM1));
 
     FixupBranch eq = J_CC(CC_E, XEmitter::Jump::Near);
     OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INEXACT_BIT));
@@ -944,19 +940,15 @@ void VR4300_Jitter::compile_fpu_inexact_check_32(struct jit_instr *op)
     OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INEXACT_BIT));
 
     SetJumpTarget(eq);
+#endif
 }
 
-void VR4300_Jitter::compile_fpu_inexact_check_64(struct jit_instr *op)
+void VR4300_Jitter::compile_fpu_inexact_check_input_64_output_float(struct jit_instr *op)
 {
-    {
-        RCX64Reg gprscratch1 = m_gpr.Scratch(), gprscratch2 = m_gpr.Scratch();
-        RegCache::Realize(gprscratch1, gprscratch2);
-
-        MOVQ_xmm(R(gprscratch1), XMM0);
-        MOVQ_xmm(R(gprscratch2), XMM1);
-
-        CMP(64, R(gprscratch1), R(gprscratch2));
-    }
+#ifdef ACCURATE_FPU_BEHAVIOR
+    MOVQ_xmm(R(RSCRATCH), XMM1);
+    CVTSI2SS64(XMM1, R(RSCRATCH));
+    UCOMISS(XMM0, R(XMM1));
 
     FixupBranch eq = J_CC(CC_E, XEmitter::Jump::Near);
     OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INEXACT_BIT));
@@ -969,6 +961,49 @@ void VR4300_Jitter::compile_fpu_inexact_check_64(struct jit_instr *op)
     OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INEXACT_BIT));
 
     SetJumpTarget(eq);
+#endif
+}
+
+void VR4300_Jitter::compile_fpu_inexact_check_input_32_output_double(struct jit_instr *op)
+{
+#ifdef ACCURATE_FPU_BEHAVIOR
+    MOVD_xmm(R(RSCRATCH), XMM1);
+    CVTSI2SD(XMM1, R(RSCRATCH));
+    UCOMISD(XMM0, R(XMM1));
+
+    FixupBranch eq = J_CC(CC_E, XEmitter::Jump::Near);
+    OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INEXACT_BIT));
+
+    TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_ENABLE_INEXACT_BIT));
+    FixupBranch no_INEXACT_fpe = J_CC(CC_Z, XEmitter::Jump::Near);
+    MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE));
+    compile_exception_general(op);
+    SetJumpTarget(no_INEXACT_fpe);
+    OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INEXACT_BIT));
+
+    SetJumpTarget(eq);
+#endif
+}
+
+void VR4300_Jitter::compile_fpu_inexact_check_input_64_output_double(struct jit_instr *op)
+{
+#ifdef ACCURATE_FPU_BEHAVIOR
+    MOVQ_xmm(R(RSCRATCH), XMM1);
+    CVTSI2SD(XMM1, R(RSCRATCH));
+    UCOMISD(XMM0, R(XMM1));
+
+    FixupBranch eq = J_CC(CC_E, XEmitter::Jump::Near);
+    OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INEXACT_BIT));
+
+    TEST(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_ENABLE_INEXACT_BIT));
+    FixupBranch no_INEXACT_fpe = J_CC(CC_Z, XEmitter::Jump::Near);
+    MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE));
+    compile_exception_general(op);
+    SetJumpTarget(no_INEXACT_fpe);
+    OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INEXACT_BIT));
+
+    SetJumpTarget(eq);
+#endif
 }
 
 void VR4300_Jitter::recompile_CVT_S_L(struct jit_instr *op)
@@ -1067,18 +1102,19 @@ void VR4300_Jitter::recompile_ROUND_W_D(struct jit_instr *op)
 
     {
         RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
+        RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
-        RegCache::Realize(Rd, gprscratch);
+        RegCache::Realize(Rd, gprscratch, scratch2);
 
         // round_w_d, untested
-        ROUNDSD(Rd, R(XMM0), 0x0);
-        CVTSD2SI(gprscratch.GetSimpleReg(), R(XMM0));
+        ROUNDSD(scratch2, R(XMM0), 0x0);
+        CVTSD2SI(gprscratch.GetSimpleReg(), scratch2);
         MOVQ_xmm(Rd, gprscratch);
 
         compile_fpu_store_output_float_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_32(op);
+    compile_fpu_inexact_check_input_32_output_double(op);
 
     compile_fpu_check_exceptions(op, true);
 }
@@ -1739,18 +1775,18 @@ void VR4300_Jitter::recompile_ROUND_W_S(struct jit_instr *op)
 
     {
         RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
-        RCX64Reg scratch2 = m_fpr.Scratch();
+        RCOpArg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
         RegCache::Realize(Rd, scratch2, gprscratch);
 
-        ROUNDSS(scratch2, R(XMM0), 0x0);
+        ROUNDSS(scratch2.GetSimpleReg(), R(XMM0), 0x0);
         CVTSS2SI(gprscratch.GetSimpleReg(), scratch2);
         MOVD_xmm(Rd, gprscratch);
 
         compile_fpu_store_output_float_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_32(op);
+    compile_fpu_inexact_check_input_32_output_float(op);
 
     compile_fpu_check_exceptions(op, true);
 }
@@ -1772,14 +1808,13 @@ void VR4300_Jitter::recompile_CVT_W_S(struct jit_instr *op)
 
     {
         RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
-        RCX64Reg scratch2 = m_fpr.Scratch();
         RCOpArg gprscratch = m_gpr.Scratch();
-        RegCache::Realize(Rd, scratch2, gprscratch);
+        RegCache::Realize(Rd, gprscratch);
 
         PERFORM_FLOAT_OPERATION_WITH_ROUNDING_MODE({
             // round_w_s
-            ROUNDSS(scratch2, R(XMM0), 0x0);
-            CVTSS2SI(gprscratch.GetSimpleReg(), scratch2);
+            ROUNDSS(XMM0, R(XMM0), 0x0);
+            CVTSS2SI(gprscratch.GetSimpleReg(), R(XMM0));
             MOVD_xmm(Rd, gprscratch);
         },{
             // trunc_w_s
@@ -1874,7 +1909,7 @@ void VR4300_Jitter::recompile_TRUNC_L_D(struct jit_instr *op)
         compile_fpu_store_output_double_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_64(op);
+    compile_fpu_inexact_check_input_64_output_double(op);
 
     compile_fpu_check_exceptions(op, false);
 }
@@ -1953,7 +1988,7 @@ void VR4300_Jitter::recompile_ROUND_L_D(struct jit_instr *op)
         compile_fpu_store_output_double_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_64(op);
+    compile_fpu_inexact_check_input_64_output_double(op);
 
     compile_fpu_check_exceptions(op, false);
 }
@@ -1987,7 +2022,7 @@ void VR4300_Jitter::recompile_ROUND_L_S(struct jit_instr *op)
         compile_fpu_store_output_double_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_64(op);
+    compile_fpu_inexact_check_input_64_output_float(op);
 
     compile_fpu_check_exceptions(op, false);
 }

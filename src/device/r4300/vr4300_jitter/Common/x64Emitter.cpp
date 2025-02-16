@@ -2086,12 +2086,12 @@ void XEmitter::MULSD(X64Reg regOp, const OpArg& arg)
 }
 void XEmitter::ROUNDSS(X64Reg regOp, const OpArg& arg, u8 rounding_mode)
 {
-  WriteSSEOp(0x66, 0x3A0A, regOp, arg, 1);
+  WriteSSE41Op(0x66, 0x3A0A, regOp, arg, 1);
   Write8(rounding_mode);
 }
 void XEmitter::ROUNDSD(X64Reg regOp, const OpArg& arg, u8 rounding_mode)
 {
-  WriteSSEOp(0x66, 0x3A0B, regOp, arg, 1);
+  WriteSSE41Op(0x66, 0x3A0B, regOp, arg, 1);
   Write8(rounding_mode);
 }
 void XEmitter::DIVSS(X64Reg regOp, const OpArg& arg)
