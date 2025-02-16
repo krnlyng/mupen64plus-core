@@ -176,6 +176,7 @@ void VR4300_Jitter::compile_fpu_check_exceptions(struct jit_instr *op, bool conv
 void VR4300_Jitter::compile_fpu_store_output_float_for_check(struct jit_instr *op, const RCX64Reg &reg)
 {
 #ifdef ACCURATE_FPU_BEHAVIOR
+    PXOR(XMM1, R(XMM1));
     MOVSS(XMM1, reg);
 #endif
 }
@@ -700,8 +701,8 @@ void VR4300_Jitter::recompile_TRUNC_W_S(struct jit_instr *op)
         compile_fpu_store_output_float_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_input_32_output_float(op);
     compile_fpu_check_exceptions(op, true);
+    compile_fpu_inexact_check_input_32_output_float(op);
 }
 
 void VR4300_Jitter::recompile_FLOOR_W_S(struct jit_instr *op)
@@ -809,8 +810,8 @@ void VR4300_Jitter::recompile_TRUNC_W_D(struct jit_instr *op)
         compile_fpu_store_output_double_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_input_64_output_double(op);
     compile_fpu_check_exceptions(op, true);
+    compile_fpu_inexact_check_input_64_output_double(op);
 }
 
 void VR4300_Jitter::recompile_TRUNC_L_S(struct jit_instr *op)
@@ -838,8 +839,8 @@ void VR4300_Jitter::recompile_TRUNC_L_S(struct jit_instr *op)
         compile_fpu_store_output_float_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_input_64_output_float(op);
     compile_fpu_check_exceptions(op, false);
+    compile_fpu_inexact_check_input_64_output_float(op);
 }
 
 void VR4300_Jitter::recompile_CVT_S_W(struct jit_instr *op)
@@ -1112,14 +1113,13 @@ void VR4300_Jitter::recompile_ROUND_W_D(struct jit_instr *op)
         // round_w_d, untested
         ROUNDSD(scratch2, R(XMM0), 0x0);
         CVTSD2SI(gprscratch.GetSimpleReg(), scratch2);
-        MOVQ_xmm(Rd, gprscratch);
+        MOVD_xmm(Rd, gprscratch);
 
         compile_fpu_store_output_float_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_input_32_output_double(op);
-
     compile_fpu_check_exceptions(op, true);
+    compile_fpu_inexact_check_input_32_output_double(op);
 }
 
 void VR4300_Jitter::recompile_CEIL_W_D(struct jit_instr *op)
@@ -1789,9 +1789,8 @@ void VR4300_Jitter::recompile_ROUND_W_S(struct jit_instr *op)
         compile_fpu_store_output_float_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_input_32_output_float(op);
-
     compile_fpu_check_exceptions(op, true);
+    compile_fpu_inexact_check_input_32_output_float(op);
 }
 
 void VR4300_Jitter::recompile_CVT_W_S(struct jit_instr *op)
@@ -1912,9 +1911,8 @@ void VR4300_Jitter::recompile_TRUNC_L_D(struct jit_instr *op)
         compile_fpu_store_output_double_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_input_64_output_double(op);
-
     compile_fpu_check_exceptions(op, false);
+    compile_fpu_inexact_check_input_64_output_double(op);
 }
 
 void VR4300_Jitter::recompile_CVT_L_D(struct jit_instr *op)
@@ -1991,9 +1989,8 @@ void VR4300_Jitter::recompile_ROUND_L_D(struct jit_instr *op)
         compile_fpu_store_output_double_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_input_64_output_double(op);
-
     compile_fpu_check_exceptions(op, false);
+    compile_fpu_inexact_check_input_64_output_double(op);
 }
 
 void VR4300_Jitter::recompile_ROUND_L_S(struct jit_instr *op)
@@ -2025,9 +2022,8 @@ void VR4300_Jitter::recompile_ROUND_L_S(struct jit_instr *op)
         compile_fpu_store_output_double_for_check(op, Rd);
     }
 
-    compile_fpu_inexact_check_input_64_output_float(op);
-
     compile_fpu_check_exceptions(op, false);
+    compile_fpu_inexact_check_input_64_output_float(op);
 }
 
 void VR4300_Jitter::recompile_CVT_D_S(struct jit_instr *op)
