@@ -1205,7 +1205,7 @@ void VR4300_Jitter::recompile_CEIL_L_D(struct jit_instr *op)
 
         // ceil_l_d, untested
         ROUNDSD(XMM0, R(XMM0), 0x2);
-        CVTSD2SI(gprscratch.GetSimpleReg(), R(XMM0));
+        CVTSD2SI64(gprscratch.GetSimpleReg(), R(XMM0));
         MOVQ_xmm(Rd, gprscratch);
     }
 
@@ -1907,7 +1907,7 @@ void VR4300_Jitter::recompile_TRUNC_L_D(struct jit_instr *op)
         RegCache::Realize(Rd, scratch2, gprscratch);
 
         // trunc_l_d, untested
-        CVTTSD2SI(gprscratch.GetSimpleReg(), R(XMM0));
+        CVTTSD2SI64(gprscratch.GetSimpleReg(), R(XMM0));
         MOVQ_xmm(Rd, gprscratch);
 
         compile_fpu_store_output_double_for_check(op, Rd);
@@ -1940,21 +1940,21 @@ void VR4300_Jitter::recompile_CVT_L_D(struct jit_instr *op)
         PERFORM_FLOAT_OPERATION_WITH_ROUNDING_MODE({
             // round_l_d, untested
             ROUNDSD(XMM0, R(XMM0), 0x0);
-            CVTSD2SI(gprscratch.GetSimpleReg(), R(XMM0));
+            CVTSD2SI64(gprscratch.GetSimpleReg(), R(XMM0));
             MOVQ_xmm(Rd, gprscratch);
         },{
             // trunc_l_d, untested
-            CVTTSD2SI(gprscratch.GetSimpleReg(), R(XMM0));
+            CVTTSD2SI64(gprscratch.GetSimpleReg(), R(XMM0));
             MOVQ_xmm(Rd, gprscratch);
         },{
             // ceil_l_d, untested
             ROUNDSD(XMM0, R(XMM0), 0x2);
-            CVTSD2SI(gprscratch.GetSimpleReg(), R(XMM0));
+            CVTSD2SI64(gprscratch.GetSimpleReg(), R(XMM0));
             MOVQ_xmm(Rd, gprscratch);
         },{
             // floor_l_d, untested
             ROUNDSD(XMM0, R(XMM0), 0x1);
-            CVTSD2SI(gprscratch.GetSimpleReg(), R(XMM0));
+            CVTSD2SI64(gprscratch.GetSimpleReg(), R(XMM0));
             MOVQ_xmm(Rd, gprscratch);
         });
     }
@@ -1985,7 +1985,7 @@ void VR4300_Jitter::recompile_ROUND_L_D(struct jit_instr *op)
 
         // round_l_d, untested
         ROUNDSD(scratch2, R(XMM0), 0x0);
-        CVTSD2SI(gprscratch.GetSimpleReg(), scratch2);
+        CVTSD2SI64(gprscratch.GetSimpleReg(), scratch2);
         MOVQ_xmm(Rd, gprscratch);
 
         compile_fpu_store_output_double_for_check(op, Rd);
@@ -2563,7 +2563,7 @@ void VR4300_Jitter::recompile_FLOOR_L_D(struct jit_instr *op)
 
         // floor_l_d, untested
         ROUNDSD(XMM0, R(XMM0), 0x1);
-        CVTSD2SI(gprscratch.GetSimpleReg(), R(XMM0));
+        CVTSD2SI64(gprscratch.GetSimpleReg(), R(XMM0));
         MOVQ_xmm(Rd, gprscratch);
     }
 

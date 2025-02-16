@@ -741,6 +741,7 @@ public:
   void CVTSS2SI(X64Reg xregdest, const OpArg& src);
   void CVTSS2SI64(X64Reg xregdest, const OpArg& src);
   void CVTSD2SI(X64Reg xregdest, const OpArg& src);
+  void CVTSD2SI64(X64Reg xregdest, const OpArg& src);
   void CVTTSS2SI(X64Reg xregdest, const OpArg& arg);
   void CVTTSS2SI64(X64Reg xregdest, const OpArg& arg);
   void CVTTSD2SI(X64Reg xregdest, const OpArg& arg);
