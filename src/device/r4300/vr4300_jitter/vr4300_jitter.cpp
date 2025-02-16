@@ -2100,6 +2100,17 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
                 || instr->operation == VR4300_OP_CVT_W_L
                 || instr->operation == VR4300_OP_CVT_L_W
                 || instr->operation == VR4300_OP_ROUND_W_W
+                || instr->operation == VR4300_OP_TRUNC_W_W
+                || instr->operation == VR4300_OP_CEIL_W_W
+                || instr->operation == VR4300_OP_FLOOR_W_W
+                || instr->operation == VR4300_OP_ROUND_L_L
+                || instr->operation == VR4300_OP_TRUNC_L_L
+                || instr->operation == VR4300_OP_CEIL_L_L
+                || instr->operation == VR4300_OP_FLOOR_L_L
+                || instr->operation == VR4300_OP_ROUND_W_L
+                || instr->operation == VR4300_OP_TRUNC_W_L
+                || instr->operation == VR4300_OP_CEIL_W_L
+                || instr->operation == VR4300_OP_FLOOR_W_L
                 || instr->operation == VR4300_OP_BC3F
                 || instr->operation == VR4300_OP_BC3FL
                 || instr->operation == VR4300_OP_BC3T
@@ -4796,6 +4807,17 @@ void VR4300_Jitter::recompile_instruction(struct jit_instr *op)
             case VR4300_OP_CVT_W_L:
             case VR4300_OP_CVT_L_W:
             case VR4300_OP_ROUND_W_W:
+            case VR4300_OP_TRUNC_W_W:
+            case VR4300_OP_CEIL_W_W:
+            case VR4300_OP_FLOOR_W_W:
+            case VR4300_OP_ROUND_L_L:
+            case VR4300_OP_TRUNC_L_L:
+            case VR4300_OP_CEIL_L_L:
+            case VR4300_OP_FLOOR_L_L:
+            case VR4300_OP_ROUND_W_L:
+            case VR4300_OP_TRUNC_W_L:
+            case VR4300_OP_CEIL_W_L:
+            case VR4300_OP_FLOOR_W_L:
                 recompile_UNIMPLEMENTED_COP1(op);
                 break;
             default:
