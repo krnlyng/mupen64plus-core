@@ -501,6 +501,7 @@ private:
         void compile_fpu_inexact_check_input_64_output_float(struct jit_instr *op);
         void compile_fpu_inexact_check_input_32_output_double(struct jit_instr *op);
         void compile_fpu_inexact_check_input_64_output_double(struct jit_instr *op);
+        void compile_C_cond_fmt_checks(struct jit_instr *op, bool cf, bool is_double, bool quiet);
 
         void recompile_instruction(struct jit_instr *op);
         void embed_valid_block_check(u32 address, bool force_check, bool delay_slot = false, bool update_cc = false);

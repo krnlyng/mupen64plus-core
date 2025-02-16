@@ -1241,6 +1241,77 @@ void VR4300_Jitter::recompile_CEIL_L_S(struct jit_instr *op)
     compile_fpu_check_exceptions(op, false);
 }
 
+template <typename ftype, typename vtype>
+bool vr4300_jitter_C_cond_fmt_checks(uint32_t* fcr31, vtype value, vtype value2, bool cf, bool quiet)
+{
+    ftype fvalue, fvalue2;
+    memcpy(&fvalue, &value, sizeof(value));
+    memcpy(&fvalue2, &value2, sizeof(value2));
+    if (isnan(fvalue) && (!quiet || qnan(fvalue))) {
+        (*fcr31) |= FCR31_CAUSE_INVALIDOP_BIT;
+        if (!((*fcr31) & FCR31_ENABLE_INVALIDOP_BIT)) {
+            (*fcr31) |= FCR31_FLAG_INVALIDOP_BIT;
+        } else {
+            return true;
+        }
+    }
+    if (isnan(fvalue2) && (!quiet || qnan(fvalue2))) {
+        (*fcr31) |= FCR31_CAUSE_INVALIDOP_BIT;
+        if (!((*fcr31) & FCR31_ENABLE_INVALIDOP_BIT)) {
+            (*fcr31) |= FCR31_FLAG_INVALIDOP_BIT;
+        } else {
+            return true;
+        }
+    }
+
+    if (cf) {
+       (*fcr31) |= FCR31_CMP_BIT;
+    } else {
+       (*fcr31) &= ~FCR31_CMP_BIT;
+    }
+
+    return false;
+}
+
+bool vr4300_jitter_C_cond_fmt_checks_double(uint32_t* fcr31, int64_t value, int64_t value2, bool cf, bool quiet)
+{
+    return vr4300_jitter_C_cond_fmt_checks<double, int64_t>(fcr31, value, value2, cf, quiet);
+}
+
+bool vr4300_jitter_C_cond_fmt_checks_float(uint32_t* fcr31, int32_t value, int32_t value2, bool cf, bool quiet)
+{
+    return vr4300_jitter_C_cond_fmt_checks<float, int32_t>(fcr31, value, value2, cf, quiet);
+}
+
+void VR4300_Jitter::compile_C_cond_fmt_checks(struct jit_instr *op, bool cf, bool is_double, bool quiet)
+{
+    // TODO: asm impl
+    BitSet32 registers_in_use = caller_saved_registers_in_use();
+    ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
+    LEA(64, ABI_PARAM1, HOTSTATE_VAR(cp1_fcr31));
+    if (is_double) {
+        MOVQ_xmm(R(ABI_PARAM2), XMM0);
+        MOVQ_xmm(R(ABI_PARAM3), XMM1);
+    } else {
+        MOVD_xmm(R(ABI_PARAM2), XMM0);
+        MOVD_xmm(R(ABI_PARAM3), XMM1);
+    }
+    MOV(32, R(ABI_PARAM4), Imm32(cf));
+    MOV(32, R(ABI_PARAM5), Imm32(quiet));
+    if (is_double) {
+        ABI_CallFunction(vr4300_jitter_C_cond_fmt_checks_double);
+    } else {
+        ABI_CallFunction(vr4300_jitter_C_cond_fmt_checks_float);
+    }
+    ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
+
+    CMP(32, R(ABI_RETURN), Imm32(1));
+    FixupBranch neq = J_CC(CC_NE, XEmitter::Jump::Near);
+    MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE));
+    compile_exception_general(op);
+    SetJumpTarget(neq);
+}
+
 void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
 {
     assert(op->has_c);
@@ -1253,6 +1324,8 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
         VALIDATE_FIN_S(op, s);
     }
 
+    bool is_double = false;
+
     if (op->a == 0x10 || op->a == 0x14) {
         RCOpArg Rs = m_fpr.UseS(op->s, RCMode::Read, true);
         RegCache::Realize(Rs);
@@ -1263,22 +1336,32 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
         RegCache::Realize(Rs);
 
         MOVSD(XMM0, Rs);
+
+        is_double = true;
     }
 
-    RCOpArg Rt = (op->a == 0x10 || op->a == 0x14) ? m_fpr.UseF(op->t, RCMode::Read, true) : m_fpr.Use(op->t, RCMode::Read);
-    RegCache::Realize(Rt);
+    {
+        RCOpArg Rt = !is_double ? m_fpr.UseF(op->t, RCMode::Read, true) : m_fpr.Use(op->t, RCMode::Read);
+        RegCache::Realize(Rt);
+
+        if (is_double) {
+            MOVSD(XMM1, Rt);
+        } else {
+            MOVSS(XMM1, Rt);
+        }
+    }
 
     compile_fpu_reset_cause(op);
 
     switch (fmt) {
         case 0:
-            UCOMISS(XMM0, Rt);
+            UCOMISS(XMM0, R(XMM1));
             break;
         case 1:
             abort();
             break;
         case 2:
-            UCOMISD(XMM0, Rt);
+            UCOMISD(XMM0, R(XMM1));
             break;
         case 3:
             abort();
@@ -1299,9 +1382,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            AND(32, HOTSTATE_VAR(cp1_fcr31), Imm32(~FCR31_CMP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INVALIDOP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INVALIDOP_BIT));
+            compile_C_cond_fmt_checks(op, false, is_double, true);
 
             leave_farcode();
 
@@ -1318,7 +1399,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CMP_BIT));
+            compile_C_cond_fmt_checks(op, true, is_double, true);
 
             leave_farcode();
             break;
@@ -1341,8 +1422,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             switch_to_far_code();
             SetJumpTarget(nan);
 
-            // at least one is nan
-            AND(32, HOTSTATE_VAR(cp1_fcr31), Imm32(~FCR31_CMP_BIT));
+            compile_C_cond_fmt_checks(op, false, is_double, true);
 
             leave_farcode();
 
@@ -1368,7 +1448,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CMP_BIT));
+            compile_C_cond_fmt_checks(op, true, is_double, true);
 
             leave_farcode();
 
@@ -1394,7 +1474,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            AND(32, HOTSTATE_VAR(cp1_fcr31), Imm32(~FCR31_CMP_BIT));
+            compile_C_cond_fmt_checks(op, false, is_double, true);
 
             leave_farcode();
 
@@ -1420,7 +1500,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CMP_BIT));
+            compile_C_cond_fmt_checks(op, true, is_double, true);
 
             leave_farcode();
 
@@ -1447,7 +1527,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            AND(32, HOTSTATE_VAR(cp1_fcr31), Imm32(~FCR31_CMP_BIT));
+            compile_C_cond_fmt_checks(op, false, is_double, true);
 
             leave_farcode();
             SetJumpTarget(exit);
@@ -1472,7 +1552,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CMP_BIT));
+            compile_C_cond_fmt_checks(op, true, is_double, true);
 
             leave_farcode();
             SetJumpTarget(exit);
@@ -1489,9 +1569,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            AND(32, HOTSTATE_VAR(cp1_fcr31), Imm32(~FCR31_CMP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INVALIDOP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INVALIDOP_BIT));
+            compile_C_cond_fmt_checks(op, false, is_double, false);
 
             leave_farcode();
             break;
@@ -1507,9 +1585,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CMP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INVALIDOP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INVALIDOP_BIT));
+            compile_C_cond_fmt_checks(op, true, is_double, false);
 
             leave_farcode();
             break;
@@ -1534,9 +1610,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            AND(32, HOTSTATE_VAR(cp1_fcr31), Imm32(~FCR31_CMP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INVALIDOP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INVALIDOP_BIT));
+            compile_C_cond_fmt_checks(op, false, is_double, false);
 
             leave_farcode();
 
@@ -1562,9 +1636,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CMP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INVALIDOP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INVALIDOP_BIT));
+            compile_C_cond_fmt_checks(op, true, is_double, false);
 
             leave_farcode();
 
@@ -1590,9 +1662,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            AND(32, HOTSTATE_VAR(cp1_fcr31), Imm32(~FCR31_CMP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INVALIDOP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INVALIDOP_BIT));
+            compile_C_cond_fmt_checks(op, false, is_double, false);
 
             leave_farcode();
 
@@ -1618,9 +1688,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CMP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INVALIDOP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INVALIDOP_BIT));
+            compile_C_cond_fmt_checks(op, true, is_double, false);
 
             leave_farcode();
 
@@ -1646,9 +1714,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            AND(32, HOTSTATE_VAR(cp1_fcr31), Imm32(~FCR31_CMP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INVALIDOP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INVALIDOP_BIT));
+            compile_C_cond_fmt_checks(op, false, is_double, false);
 
             leave_farcode();
 
@@ -1674,9 +1740,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
             SetJumpTarget(nan);
 
             // at least one is nan
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CMP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INVALIDOP_BIT));
-            OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INVALIDOP_BIT));
+            compile_C_cond_fmt_checks(op, true, is_double, false);
 
             leave_farcode();
 
