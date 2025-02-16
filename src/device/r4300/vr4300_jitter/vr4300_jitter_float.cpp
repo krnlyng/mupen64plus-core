@@ -291,11 +291,11 @@ bool vr4300_jitter_check_input_float_conv_32(uint32_t* fcr31, int32_t value)
             return true;
         }
     };
-    if (fvalue >= 0x1p+31f || fvalue <= -0x1p+31f) {
+
+    if (fvalue >= 0x1p+31f || fvalue < -0x1p+31f) {
         (*fcr31) |= FCR31_CAUSE_UNIMPLOP_BIT;
         return true;
     }
-
     return false;
 }
 
@@ -313,7 +313,7 @@ bool vr4300_jitter_check_input_double_conv_32(uint32_t* fcr31, int64_t value)
         }
     };
 
-    if (fvalue >= 0x1p+31f || fvalue <= -0x1p+31f) {
+    if (fvalue >= 0x1p+31f || fvalue < -0x1p+31f) {
         (*fcr31) |= FCR31_CAUSE_UNIMPLOP_BIT;
         return true;
     }
@@ -989,7 +989,7 @@ void VR4300_Jitter::compile_fpu_inexact_check_input_64_output_double(struct jit_
 {
 #ifdef ACCURATE_FPU_BEHAVIOR
     MOVQ_xmm(R(RSCRATCH), XMM1);
-    CVTSI2SD(XMM1, R(RSCRATCH));
+    CVTSI2SD64(XMM1, R(RSCRATCH));
     UCOMISD(XMM0, R(XMM1));
 
     FixupBranch eq = J_CC(CC_E, XEmitter::Jump::Near);
