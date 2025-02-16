@@ -739,6 +739,7 @@ public:
 
   // Destinations are X64 regs (rax, rbx, ...) for these instructions.
   void CVTSS2SI(X64Reg xregdest, const OpArg& src);
+  void CVTSS2SI64(X64Reg xregdest, const OpArg& src);
   void CVTSD2SI(X64Reg xregdest, const OpArg& src);
   void CVTTSS2SI(X64Reg xregdest, const OpArg& arg);
   void CVTTSS2SI64(X64Reg xregdest, const OpArg& arg);
