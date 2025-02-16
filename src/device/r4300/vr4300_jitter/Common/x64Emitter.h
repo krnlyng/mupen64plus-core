@@ -743,6 +743,7 @@ public:
   void CVTTSS2SI(X64Reg xregdest, const OpArg& arg);
   void CVTTSS2SI64(X64Reg xregdest, const OpArg& arg);
   void CVTTSD2SI(X64Reg xregdest, const OpArg& arg);
+  void CVTTSD2SI64(X64Reg xregdest, const OpArg& arg);
 
   // SSE2: Packed integer instructions
   void PACKSSDW(X64Reg dest, const OpArg& arg);

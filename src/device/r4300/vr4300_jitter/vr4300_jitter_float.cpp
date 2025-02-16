@@ -800,9 +800,11 @@ void VR4300_Jitter::recompile_TRUNC_W_D(struct jit_instr *op)
 
     {
         RCX64Reg Rd = m_fpr.RevertableBind(op->d, RCMode::Write, true);
-        RegCache::Realize(Rd);
+        RCOpArg gprscratch = m_gpr.Scratch();
+        RegCache::Realize(Rd, gprscratch);
 
-        CVTTPD2DQ(Rd, R(XMM0));
+        CVTTSD2SI64(gprscratch.GetSimpleReg(), R(XMM0));
+        MOVQ_xmm(Rd, gprscratch);
 
         compile_fpu_store_output_double_for_check(op, Rd);
     }
@@ -1068,7 +1070,8 @@ void VR4300_Jitter::recompile_CVT_W_D(struct jit_instr *op)
             MOVQ_xmm(Rd, gprscratch);
         },{
             // trunc_w_d
-            CVTTPD2DQ(Rd, R(XMM0));
+            CVTTSD2SI64(gprscratch.GetSimpleReg(), R(XMM0));
+            MOVQ_xmm(Rd, gprscratch);
         },{
             // ceil_w_d, untested
             ROUNDSD(XMM0, R(XMM0), 0x2);
