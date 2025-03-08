@@ -8,6 +8,7 @@
 #include "../regs.h"
 #include "../vr4300_jitter_instruction_decoder.h"
 #include "../vr4300_jitter.h"
+#include "../vr4300_jitter_internal.h"
 
 using namespace Gen;
 
@@ -38,6 +39,7 @@ void GPRRegCache::StoreRegister(preg_t preg, const OpArg& new_loc)
 void GPRRegCache::LoadRegister(preg_t preg, X64Reg new_loc)
 {
   ASSERT_MSG(DYNA_REC, !m_regs[preg].IsDiscarded(), "Discarded register - %d", preg);
+  if (preg >= 32) abort();
   if (preg == 0) {
       return;
   }
@@ -46,25 +48,11 @@ void GPRRegCache::LoadRegister(preg_t preg, X64Reg new_loc)
 
 OpArg GPRRegCache::GetDefaultLocation(preg_t preg) const
 {
+  if (preg >= 32) abort();
   return HOTSTATE_REG(preg);
 }
 
 OpArg GPRRegCache::GetDefaultLocation32(preg_t preg) const
-{
-  return HOTSTATE_REG(preg);
-}
-
-OpArg GPRRegCache::GetDefaultLocation32s(preg_t preg) const
-{
-  return HOTSTATE_REG(preg);
-}
-
-OpArg GPRRegCache::GetDefaultLocation32d(preg_t preg) const
-{
-  return HOTSTATE_REG(preg);
-}
-
-OpArg GPRRegCache::GetDefaultLocation32f(preg_t preg) const
 {
   return HOTSTATE_REG(preg);
 }
@@ -96,18 +84,18 @@ void GPRRegCache::SetImmediate64(preg_t preg, u64 imm_value, bool dirty)
   m_regs[preg].SetToImm64(imm_value, dirty);
 }
 
-BitSet32 GPRRegCache::GetRegUtilization() const
+BitSet64 GPRRegCache::GetRegUtilization() const
 {
-  return HOT_STATE->op->regsInUse;
+  return BiggerBitSet(HOT_STATE->op->regsInUse);
 }
 
-BitSet32 GPRRegCache::CountRegsIn(preg_t preg, u32 lookahead) const
+BitSet64 GPRRegCache::CountRegsIn(preg_t preg, u32 lookahead) const
 {
-  BitSet32 regs_used;
+  BitSet64 regs_used;
 
   for (u32 i = 1; i < lookahead; i++)
   {
-    BitSet32 regs_in = HOT_STATE->op[i].regsIn;
+    BitSet64 regs_in = BiggerBitSet(HOT_STATE->op[i].regsIn);
     regs_used |= regs_in;
     if (regs_in[preg])
       return regs_used;
@@ -116,12 +104,12 @@ BitSet32 GPRRegCache::CountRegsIn(preg_t preg, u32 lookahead) const
   return regs_used;
 }
 
-void GPRRegCache::StoreRegister32(preg_t preg, const OpArg& new_loc, bool flush_upper)
+void GPRRegCache::StoreRegister32(preg_t preg, const OpArg& new_loc)
 {
     abort();
 }
 
-void GPRRegCache::LoadRegister32(preg_t preg, X64Reg new_loc, bool is_s_use, bool is_f_use)
+void GPRRegCache::LoadRegister32(preg_t preg, X64Reg new_loc, bool flush_upper)
 {
     abort();
 }

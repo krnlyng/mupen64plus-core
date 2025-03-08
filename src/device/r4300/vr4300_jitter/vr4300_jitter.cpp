@@ -56,8 +56,6 @@
 
 #include "ConstantPool.h"
 
-#include <assert.h>
-
 VR4300_Jitter *gJitterInstance = nullptr;
 
 #include <sys/types.h>
@@ -314,7 +312,7 @@ static void print_newline()
                 int k = i * 8 + j; \
                 /*if (m_fpr.IsBound(k) && m_fpr.IsDirty(k)) { */ \
                 if (m_fpr.IsBound(k) && m_fpr.IsDirty(k)) { \
-                    RCX64Reg reg = m_fpr.Bind(k, RCMode::Read, m_fpr.Is32BitOnly(k)); \
+                    RCX64Reg reg = m_fpr.Is32BitOnly(k) ? m_fpr.Bind32(k, RCMode::Read) : m_fpr.Bind(k, RCMode::Read); \
                     RegCache::Realize(reg); \
                     if (m_fpr.Is32BitOnly(k)) { \
                         if (HOT_STATE->fr_is_set) { \
@@ -401,7 +399,7 @@ uint32_t vr4300_jitter_translate_pc_no_exception(uint32_t pc)
 
 void VR4300_Jitter::switch_to_far_code()
 {
-    assert(!m_in_far_code);
+    ASSERT(!m_in_far_code);
     m_in_far_code = true;
     m_near_code = GetWritableCodePtr();
     m_near_code_end = GetWritableCodeEnd();
@@ -413,7 +411,7 @@ void VR4300_Jitter::switch_to_far_code()
 
 void VR4300_Jitter::switch_to_near_code()
 {
-    assert(m_in_far_code);
+    ASSERT(m_in_far_code);
     m_in_far_code = false;
     m_far_code.SetCodePtr(GetWritableCodePtr(), GetWritableCodeEnd(), HasWriteFailed());
     SetCodePtr(m_near_code, m_near_code_end, m_near_code_write_failed);
@@ -448,7 +446,7 @@ u32 VR4300_Jitter::get_address_of_nth_instruction_after(struct jit_instr *op, in
 }
 
 void VR4300_Jitter::mov_2(int bits1, const Gen::X64Reg &dest1, int bits2, const Gen::X64Reg &dest2, const RCOpArg &source1, const RCOpArg &source2) {
-    assert((bits1 == 32 || bits1 == 64) && (bits2 == 32 || bits2 == 64));
+    ASSERT((bits1 == 32 || bits1 == 64) && (bits2 == 32 || bits2 == 64));
     if (source1.IsSimpleReg() && dest1 == source1.GetSimpleReg() &&
         source2.IsSimpleReg() && dest2 == source2.GetSimpleReg()) {
         // nop
@@ -1009,13 +1007,13 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
         if (instr->has_c && instr->has_t && instr->has_s && !instr->has_d && !instr->has_k) {
             if (is_float) {
                 // C_cond_fmt
-                assert(instr->has_a);
+                ASSERT(instr->has_a);
                 if (instr->a == 0x10 || instr->a == 0x14) {
-                   instr->fregsIn32[instr->s] = 1;
-                   instr->fregsIn32[instr->t] = 1;
+                   instr->fregsIn32[USE32_S(instr->s)] = 1;
+                   instr->fregsIn32[USE32_T(instr->t)] = 1;
                 } else {
-                    instr->fregsIn[instr->s] = 1;
-                    instr->fregsIn[instr->t] = 1;
+                    instr->fregsIn[USE64(HOT_STATE->fr_is_set ? instr->s : (instr->s & ~1))] = 1;
+                    instr->fregsIn[USE64(instr->t)] = 1;
                 }
             } else found = -100;
             found++;
@@ -1037,17 +1035,17 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
 
         if (instr->has_t && instr->has_s && instr->has_d) {
             if (is_float) {
-                assert(instr->has_a);
+                ASSERT(instr->has_a);
                 bool ignore_low_bit = (strlen(instr->name) >= 2 && instr->name[strlen(instr->name) - 2] == '_' && instr->name[strlen(instr->name) - 1] == 'D' && !HOT_STATE->fr_is_set);
 
                 if (instr->a == 0x10 || instr->a == 0x14)  {
-                    instr->fregsOut32[instr->d] = 1;
-                    instr->fregsIn32[instr->s & (ignore_low_bit ? ~1 : ~0)] = 1;
-                    instr->fregsIn32[instr->t] = 1;
+                    instr->fregsOut32[USE32_D(instr->d)] = 1;
+                    instr->fregsIn32[USE32_S(instr->s & (ignore_low_bit ? ~1 : ~0))] = 1;
+                    instr->fregsIn32[USE32_T(instr->t)] = 1;
                 } else if (instr->a == 0x11 || instr->a == 0x15)  {
-                    instr->fregsOut[instr->d] = 1;
-                    instr->fregsIn[instr->s & (ignore_low_bit ? ~1 : ~0)] = 1;
-                    instr->fregsIn[instr->t] = 1;
+                    instr->fregsOut[USE64(instr->d)] = 1;
+                    instr->fregsIn[USE64(instr->s & (ignore_low_bit ? ~1 : ~0))] = 1;
+                    instr->fregsIn[USE64(instr->t)] = 1;
                 } else abort();
             } else {
                 instr->regsOut[instr->d] = 1;
@@ -1059,28 +1057,31 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
 
         if (!instr->has_a && instr->has_t && ((is_float && (instr->x == 1)) ? (instr->has_s && !instr->has_d) : (instr->has_d && !instr->has_s)) && !instr->has_k) {
             if (is_float) {
-                int out_reg = (instr->x == 1) ? instr->s : instr->d;
                 if (strncmp(instr->name, "MT", 2) == 0 || strncmp(instr->name, "CT", 2) == 0 || strncmp(instr->name, "DMT", 3) == 0) {
                     // MTC1, CTC1
                     instr->regsIn[instr->t] = 1;
                     if (strncmp(instr->name, "DMT", 3) == 0) {
+                        int out_reg = (instr->x == 1) ? instr->s : instr->d;
                         if (!HOT_STATE->fr_is_set) {
-                            instr->fregsOut[out_reg & ~1] = 1;
+                            instr->fregsOut[USE64(out_reg & ~1)] = 1;
                         } else {
-                            instr->fregsOut[out_reg] = 1;
+                            instr->fregsOut[USE64(out_reg)] = 1;
                         }
                     } else if (strncmp(instr->name, "MT", 2) == 0) {
+                        int out_reg = (instr->x == 1) ? USE32_T(instr->s) : USE32_D(instr->d);
                         instr->fregsOut32[out_reg] = 1;
                     }
                 } else {
                     // MFC1, CFC1
                     if (strncmp(instr->name, "MF", 2) == 0 || strncmp(instr->name, "CF", 2) == 0) {
+                        int out_reg = (instr->x == 1) ? USE32_T(instr->s) : USE32_D(instr->d);
                         instr->fregsIn32[out_reg] = 1;
                     } else if (strncmp(instr->name, "DMF", 3) == 0 || strncmp(instr->name, "DCF", 3) == 0) {
+                        int out_reg = (instr->x == 1) ? instr->s : instr->d;
                         if (!HOT_STATE->fr_is_set) {
-                            instr->fregsIn[out_reg & ~1] = 1;
+                            instr->fregsIn[USE64(out_reg & ~1)] = 1;
                         } else {
-                            instr->fregsIn[out_reg] = 1;
+                            instr->fregsIn[USE64(out_reg)] = 1;
                         }
                     }
                     instr->regsOut[instr->t] = 1;
@@ -1134,22 +1135,22 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
                 if (is_load) {
                     if (instr->name[1] == 'D') {
                         if (!HOT_STATE->fr_is_set) {
-                            instr->fregsOut[instr->t & ~1] = 1;
+                            instr->fregsOut[USE64(instr->t & ~1)] = 1;
                         } else {
-                            instr->fregsOut[instr->t] = 1;
+                            instr->fregsOut[USE64(instr->t)] = 1;
                         }
                     } else if (instr->name[1] == 'W') {
-                        instr->fregsOut32[instr->t] = 1;
+                        instr->fregsOut32[USE32_T(instr->t)] = 1;
                     } else found = 555;
                 } else {
                     if (instr->name[1] == 'D') {
                         if (!HOT_STATE->fr_is_set) {
-                            instr->fregsIn[instr->t & ~1] = 1;
+                            instr->fregsIn[USE64(instr->t & ~1)] = 1;
                         } else {
-                            instr->fregsIn[instr->t] = 1;
+                            instr->fregsIn[USE64(instr->t)] = 1;
                         }
                     } else if (instr->name[1] == 'W') {
-                        instr->fregsIn32[instr->t] = 1;
+                        instr->fregsIn32[USE32_T(instr->t)] = 1;
                     } else found = 556;
                 }
             } else {
@@ -1160,6 +1161,9 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
                     }
                     // we use ReadWrite
                     if (strcmp(instr->name, "LWL") == 0 || strcmp(instr->name, "LWR") == 0) {
+                        instr->regsIn[instr->t] = 1;
+                    }
+                    if (strcmp(instr->name, "LDL") == 0 || strcmp(instr->name, "LDR") == 0) {
                         instr->regsIn[instr->t] = 1;
                     }
                     instr->regsOut[instr->t] = 1;
@@ -1207,11 +1211,11 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
         if (instr->has_s && instr->has_d && !instr->has_t && instr->has_a) {
             if (is_float) {
                 bool ignore_low_bit = false;
-                assert(instr->has_a);
+                ASSERT(instr->has_a);
                 if (strcmp(instr->name, "MOV_S") == 0) {
                     // MOV_S behaves like MOV_D
-                    instr->fregsOut[instr->d] = 1;
-                    instr->fregsIn[HOT_STATE->fr_is_set ? instr->s : (instr->s & ~1)] = 1;
+                    instr->fregsOut[USE64(instr->d)] = 1;
+                    instr->fregsIn[USE64(HOT_STATE->fr_is_set ? instr->s : (instr->s & ~1))] = 1;
                 } else {
                     if (strncmp(instr->name, "CVT", 3) == 0
                         || strncmp(instr->name, "ROUND", 5) == 0
@@ -1237,13 +1241,13 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
                         } else abort();
                     }
                     if (instr->a == 0x10 || instr->a == 0x14) {
-                        instr->fregsIn32[instr->s & (ignore_low_bit ? ~1 : ~0)] = 1;
-                        if (out_32) instr->fregsOut32[instr->d] = 1;
-                        else instr->fregsOut[instr->d] = 1;
+                        instr->fregsIn32[USE32_S(instr->s & (ignore_low_bit ? ~1 : ~0))] = 1;
+                        if (out_32) instr->fregsOut32[USE32_D(instr->d)] = 1;
+                        else instr->fregsOut[USE64(instr->d)] = 1;
                     } else if (instr->a == 0x11 || instr->a == 0x15) {
-                        instr->fregsIn[instr->s & (ignore_low_bit ? ~1 : ~0)] = 1;
-                        if (!out_32) instr->fregsOut[instr->d] = 1;
-                        else instr->fregsOut32[instr->d] = 1;
+                        instr->fregsIn[USE64(instr->s & (ignore_low_bit ? ~1 : ~0))] = 1;
+                        if (!out_32) instr->fregsOut[USE64(instr->d)] = 1;
+                        else instr->fregsOut32[USE32_D(instr->d)] = 1;
                     } else abort();
                 }
                 found++;
@@ -1420,7 +1424,7 @@ bool VR4300_Jitter::is_nop(struct jit_instr *op) {
         case VR4300_OP_SLLV:
         case VR4300_OP_SRLV:
         case VR4300_OP_SRAV: {
-            assert(op->has_d);
+            ASSERT(op->has_d);
 
             // nop
             if (op->d == 0) {
@@ -1433,7 +1437,7 @@ bool VR4300_Jitter::is_nop(struct jit_instr *op) {
         case VR4300_OP_DSLLV:
         case VR4300_OP_DSRLV:
         case VR4300_OP_DSRAV: {
-            assert(op->has_d);
+            ASSERT(op->has_d);
 
             // nop
             if (op->d == 0) {
@@ -1455,7 +1459,7 @@ bool VR4300_Jitter::is_nop(struct jit_instr *op) {
         case VR4300_OP_DADDU:
         case VR4300_OP_DSUB:
         case VR4300_OP_DSUBU: {
-            assert(op->has_d);
+            ASSERT(op->has_d);
 
             // nop
             if (op->d == 0) {
@@ -1469,7 +1473,7 @@ bool VR4300_Jitter::is_nop(struct jit_instr *op) {
         case VR4300_OP_DSLL32:
         case VR4300_OP_DSRL32:
         case VR4300_OP_DSRA32: {
-            assert(op->has_d);
+            ASSERT(op->has_d);
 
             // nop
             if (op->d == 0) {
@@ -1485,7 +1489,7 @@ bool VR4300_Jitter::is_nop(struct jit_instr *op) {
         case VR4300_OP_ORI:
         case VR4300_OP_XORI:
         case VR4300_OP_LUI: {
-            assert(op->has_t);
+            ASSERT(op->has_t);
 
             // nop
             if (op->t == 0) {
@@ -1495,7 +1499,7 @@ bool VR4300_Jitter::is_nop(struct jit_instr *op) {
         }
         case VR4300_OP_MFC0:
         case VR4300_OP_DMFC0: {
-            assert(op->has_t);
+            ASSERT(op->has_t);
 
             // nop
             if (op->t == 0) {
@@ -1507,7 +1511,7 @@ bool VR4300_Jitter::is_nop(struct jit_instr *op) {
         case VR4300_OP_DMFC1:
         case VR4300_OP_CFC1:
         /*case VR4300_OP_DCFC1:*/ {
-            assert(op->has_t);
+            ASSERT(op->has_t);
 
             // nop
             if (op->t == 0) {
@@ -1517,7 +1521,7 @@ bool VR4300_Jitter::is_nop(struct jit_instr *op) {
         }
         case VR4300_OP_MFC2:
         case VR4300_OP_DMFC2: {
-            assert(op->has_t);
+            ASSERT(op->has_t);
 
             // nop
             if (op->t == 0) {
@@ -1537,7 +1541,7 @@ bool VR4300_Jitter::is_nop(struct jit_instr *op) {
         case VR4300_OP_LHU:
         case VR4300_OP_LWR:
         case VR4300_OP_LWU: {
-            assert(op->has_t);
+            ASSERT(op->has_t);
 
             // nop
             if (op->t == 0) {
@@ -1546,7 +1550,7 @@ bool VR4300_Jitter::is_nop(struct jit_instr *op) {
             break;
         }
         case VR4300_OP_LL: {
-            assert(op->has_t);
+            ASSERT(op->has_t);
 
             // nop
             if (op->t == 0) {
@@ -1555,7 +1559,7 @@ bool VR4300_Jitter::is_nop(struct jit_instr *op) {
             break;
         }
         case VR4300_OP_LD: {
-            assert(op->has_t);
+            ASSERT(op->has_t);
 
             // nop
             if (op->t == 0) {
@@ -1773,14 +1777,13 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
 
         code_block->instr[i].is_delay_slot = false;
         code_block->instr[i].regsIn = BitSet32{};
-        code_block->instr[i].fregsIn = BitSet32{};
-        code_block->instr[i].fregsIn32 = BitSet32{};
+        code_block->instr[i].fregsIn = BitSet64{};
+        code_block->instr[i].fregsIn32 = BitSet64{};
         code_block->instr[i].regsInUse = BitSet32{};
-        code_block->instr[i].fregsInUse = BitSet32{};
-        code_block->instr[i].fregsInUse32 = BitSet32{};
+        code_block->instr[i].fregsInUse = BitSet64{};
         code_block->instr[i].regsOut = BitSet32{};
-        code_block->instr[i].fregsOut = BitSet32{};
-        code_block->instr[i].fregsOut32 = BitSet32{};
+        code_block->instr[i].fregsOut = BitSet64{};
+        code_block->instr[i].fregsOut32 = BitSet64{};
 
         code_block->num_instructions++;
 
@@ -1865,14 +1868,13 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
 
                 code_block->instr[i+1].is_delay_slot = true;
                 code_block->instr[i+1].regsIn = BitSet32{};
-                code_block->instr[i+1].fregsIn = BitSet32{};
-                code_block->instr[i+1].fregsIn32 = BitSet32{};
+                code_block->instr[i+1].fregsIn = BitSet64{};
+                code_block->instr[i+1].fregsIn32 = BitSet64{};
                 code_block->instr[i+1].regsInUse = BitSet32{};
-                code_block->instr[i+1].fregsInUse = BitSet32{};
-                code_block->instr[i+1].fregsInUse32 = BitSet32{};
+                code_block->instr[i+1].fregsInUse = BitSet64{};
                 code_block->instr[i+1].regsOut = BitSet32{};
-                code_block->instr[i+1].fregsOut = BitSet32{};
-                code_block->instr[i+1].fregsOut32 = BitSet32{};
+                code_block->instr[i+1].fregsOut = BitSet64{};
+                code_block->instr[i+1].fregsOut32 = BitSet64{};
 
                 code_block->num_instructions++;
             } else {
@@ -1902,12 +1904,12 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
             } else if (follows < MAX_BRANCH_FOLLOWS && i < FOLLOW_INSTRUCTION_THRESHOLD && will_branch(&code_block->instr[i]) && !is_linking_branch(&code_block->instr[i]) && (code_block->instr[i].operation != VR4300_OP_JR) && !is_nop(&code_block->instr[i + 1])) {
                 uint32_t target;
                 if (code_block->instr[i].operation == VR4300_OP_J) {
-                    assert(code_block->instr[i].has_k);
+                    ASSERT(code_block->instr[i].has_k);
                     if (!code_block->instr[i].has_k) abort();
                     uint32_t high_order_bits = ((code_block->instr[i].address + 4) & 0xf0000000);
                     target = high_order_bits | ((u32)(code_block->instr[i].k & 0x3FFFFFF) << 2);
                 } else {
-                    assert(code_block->instr[i].has_f);
+                    ASSERT(code_block->instr[i].has_f);
                     if (!code_block->instr[i].has_f) abort();
                     target = code_block->instr[i].address + (s32)((s16)(code_block->instr[i].f + 1) * 4);
                 }
@@ -1954,11 +1956,11 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
     if (code_block->num_instructions >= 2 && second_to_last_instruction->is_branch_or_jump) {
         if (is_nop(last_instruction)) {
             if (second_to_last_instruction->name[0] == 'B') {
-                assert(second_to_last_instruction->has_f);
+                ASSERT(second_to_last_instruction->has_f);
                 code_block->branch_to = second_to_last_instruction->address + (s32)((s16)(second_to_last_instruction->f + 1) * 4);
             } else if (second_to_last_instruction->operation == VR4300_OP_J) {
                 // JAL is excluded here.
-                assert(second_to_last_instruction->has_k);
+                ASSERT(second_to_last_instruction->has_k);
                 uint32_t high_order_bits = ((second_to_last_instruction->address + 4) & 0xf0000000);
                 uint32_t target = high_order_bits | ((u32)(second_to_last_instruction->k & 0x3FFFFFF) << 2);
                 code_block->branch_to = target;
@@ -2010,12 +2012,12 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
         }
     }
 
-    assert(code_block->num_instructions);
+    ASSERT(code_block->num_instructions);
 
     BitSet32 regsInUse = BitSet32{};
-    BitSet32 fregsInUse = BitSet32{};
+    BitSet64 fregsInUse = BitSet64{};
     BitSet32 regsDiscardable = BitSet32{};
-    BitSet32 fregsDiscardable = BitSet32{};
+    BitSet64 fregsDiscardable = BitSet64{};
 
     bool first_float_instruction = true;
     bool first_ctc2_instruction = true;
@@ -2137,34 +2139,20 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
 
         if (instr->may_cause_exception || instr->is_delay_slot) {
             regsDiscardable = BitSet32{};
-            fregsDiscardable = BitSet32{};
+            fregsDiscardable = BitSet64{};
         } else {
             regsDiscardable |= instr->regsOut;
             regsDiscardable &= ~instr->regsIn;
 
-            if (!HOT_STATE->fr_is_set) {
-                fregsDiscardable |= instr->fregsOut;
-                for (preg_t p : BitSet32::AllTrue(32)) {
-                    if ((fregsDiscardable[(p & ~1) + 1] && instr->fregsOut32[(p & ~1)]) || (fregsDiscardable[(p & ~1)] && instr->fregsOut32[(p & ~1) + 1])) {
-                        fregsDiscardable[p & ~1] = true;
-                    }
-                }
-                for (preg_t p : BitSet32::AllTrue(32)) {
-                    if (instr->fregsIn32[(p & ~1)] || instr->fregsIn32[(p & ~1) + 1] || instr->fregsIn[(p & ~1)]) {
-                        fregsDiscardable[p & ~1] = false;
-                    }
-                }
-            } else {
-                // TODO: fregsOut32?
-                fregsDiscardable |= instr->fregsOut;
-                fregsDiscardable &= ~(instr->fregsIn | instr->fregsIn32);
-            }
+            // TODO: HOT_STATE->fr_is_set case?
+            fregsDiscardable |= instr->fregsOut;
+            fregsDiscardable &= ~(instr->fregsIn | instr->fregsIn32);
         }
     }
 
-    BitSet32 scanRegs = BitSet32{}, scanRegs32 = BitSet32{};
-    BitSet32 scanRegsSUse = BitSet32{}, scanRegsNoSUse = BitSet32{};
     code_block->exceptionless_block = true;
+
+    // TODO: flushUpper stuff?
 
     for (int i = 0; i < code_block->num_instructions; i++) {
         struct jit_instr *instr = &code_block->instr[i];
@@ -2173,212 +2161,79 @@ unsigned int VR4300_Jitter::Analyze(unsigned int addr, struct prepared_code_bloc
             code_block->exceptionless_block &= !instr->may_cause_exception;
         }
 
-        BitSet32 fregsIncompatible = BitSet32::AllTrue(0);
-        BitSet32 fregsIncompatible32 = BitSet32::AllTrue(0);
-        BitSet32 fregsSUseIncompatible = BitSet32::AllTrue(0);
-
-        scanRegs &= ~instr->fregsDiscardable;
-        scanRegs32 &= ~instr->fregsDiscardable;
-        scanRegsSUse &= ~instr->fregsDiscardable;
-        scanRegsNoSUse &= ~instr->fregsDiscardable;
+        BitSet64 fregsIncompatible = BitSet64::AllTrue(0);
+        BitSet64 fregsOverlap = BitSet64::AllTrue(0);
+        BitSet64 fregsIncompatible32 = BitSet64::AllTrue(0);
 
         // for each of those float reg that are used as 64
-        for (preg_t p : instr->fregsOut | scanRegs) {
+        for (preg_t p : instr->fregsOut) {
+            ASSERT((p & 1) == 0);
+
             // check if the next instruction that uses it is using it in a different mode
             for (int j = i + 1; j < code_block->num_instructions; j++) {
                 struct jit_instr *instr2 = &code_block->instr[j];
-                preg_t p2 = p;
-                if (!HOT_STATE->fr_is_set) {
-                    if (p & 1) {
-                        p2 = p2 & ~1;
-                    } else {
-                        p2 = (p2 & ~1) + 1;
-                    }
-                }
-                if (instr2->fregsDiscardable[p] || instr2->fregsDiscardable[p2]) {
-                    scanRegs[p] = false;
-                    scanRegs[p2] = false;
+
+                if (instr2->fregsDiscardable[p]) {
                     break;
                 }
-                if (instr2->fregsIn32[p] || instr2->fregsOut32[p] || instr2->fregsIn32[p2] || instr2->fregsOut32[p2]) {
-                    scanRegs[p] = false;
+
+                if (instr2->fregsIn32[p] || instr2->fregsOut32[p]) {
                     fregsIncompatible32[p] = true;
                     break;
                 }
-                if (instr2->fregsIn[p] || instr2->fregsIn[p2]) {
-                    scanRegs[p] = true;
-                    break;
-                }
-                if (instr2->fregsOut[p] || instr2->fregsOut[p2]) {
-                    scanRegs[p] = false;
+
+                if (instr2->fregsIn32[p + 1] || instr2->fregsOut32[p + 1]) {
+                    fregsIncompatible32[p + 1] = true;
                     break;
                 }
             }
         }
 
-        BitSet32 regsToCheck32 = BitSet32{};
-        if (!HOT_STATE->fr_is_set) {
-            for (preg_t p : instr->fregsOut32 | scanRegs32) {
-                regsToCheck32[p & ~1] = true;
-                regsToCheck32[(p & ~1) + 1] = true;
-            }
-        } else {
-            regsToCheck32 = instr->fregsOut32 | scanRegs32;
-        }
         // for each of those float regs that are used as 32
-        for (preg_t p : regsToCheck32) {
+        for (preg_t p : instr->fregsOut32) {
             // check if the next instruction that uses it is using it in a different mode
             for (int j = i + 1; j < code_block->num_instructions; j++) {
                 struct jit_instr *instr2 = &code_block->instr[j];
-                preg_t p2 = p;
-                if (!HOT_STATE->fr_is_set) {
-                    if (p & 1) {
-                        p2 = p2 & ~1;
-                    } else {
-                        p2 = (p2 & ~1) + 1;
-                    }
-                }
-                if (instr2->fregsDiscardable[p] || instr2->fregsDiscardable[p2]) {
-                    scanRegs32[p] = false;
-                    scanRegs32[p2] = false;
-                    break;
-                }
-                if (instr2->fregsIn[p] || instr2->fregsOut[p] || instr2->fregsIn[p2] || instr2->fregsOut[p2]) {
-                    scanRegs32[p] = false;
-                    scanRegs32[p2] = false;
-                    fregsIncompatible[p] = true;
-                    fregsIncompatible[p2] = true;
-                    break;
-                }
-                if (instr2->fregsIn32[p] || instr2->fregsIn32[p2]) {
-                    scanRegs32[p] = true;
-                    scanRegs32[p2] = true;
-                    break;
-                }
-                if (instr2->fregsOut32[p] || instr2->fregsOut32[p2]) {
-                    scanRegs32[p] = false;
-                    scanRegs32[p2] = false;
-                    break;
-                }
-            }
-        }
 
-#if 1
-        if (!HOT_STATE->fr_is_set) {
-            if (instr->has_s && ((instr->has_x && instr->x == 1) || instr->has_a)) {
-                fregsSUseIncompatible[instr->s] = true;
-            }
-        }
-#else
-        if (!HOT_STATE->fr_is_set) {
-            BitSet32 regsToCheckSUse{};
-            BitSet32 regsToCheckNoSUse{};
-            if (instr->has_s && ((instr->has_x && instr->x == 1) || instr->has_a)) {
-                regsToCheckSUse[instr->s] = true;
-            }
- 
-            if (instr->has_t && ((instr->has_x && instr->x == 1) || instr->has_a)) {
-                regsToCheckNoSUse[instr->t] = true;
-            }
-            if (instr->has_d && ((instr->has_x && instr->x == 1) || instr->has_a)) {
-                regsToCheckNoSUse[instr->d] = true;
-            }
- 
-            for (preg_t p : regsToCheckSUse | scanRegsSUse) {
-                // check if the next instruction that uses it is using it in a different mode
-                for (int j = i + 1; j < code_block->num_instructions; j++) {
-                    struct jit_instr *instr2 = &code_block->instr[j];
-                    preg_t p2 = p;
-                    if (!HOT_STATE->fr_is_set) {
-                        if (p & 1) {
-                            p2 = p2 & ~1;
-                        } else {
-                            p2 = (p2 & ~1) + 1;
-                        }
-                    }
-                    if (instr2->fregsDiscardable[p] || instr2->fregsDiscardable[p2]) {
-                        scanRegsSUse[p] = false;
-                        scanRegsSUse[p2] = false;
-                        break;
-                    }
-                    if (instr2->fregsIn[p] || instr2->fregsOut[p] || instr2->fregsIn[p2] || instr2->fregsOut[p2]) {
-                        scanRegsSUse[p] = false;
-                        scanRegsSUse[p2] = false;
-                        fregsSUseIncompatible[p] = true;
-                        fregsSUseIncompatible[p2] = true;
-                        break;
-                    }
-                    if (instr2->fregsIn32[p] || instr2->fregsIn32[p2]) {
-                        if (instr2->has_t && (instr2->t == p || instr2->t == p2)
-                            || instr2->has_d && (instr2->d == p || instr2->d == p2)) {
-                            scanRegsSUse[p] = false;
-                            scanRegsSUse[p2] = false;
-                            fregsSUseIncompatible[p] = true;
-                            fregsSUseIncompatible[p2] = true;
-                        }
-                        break;
-                    }
-                    if (instr2->fregsOut32[p] || instr2->fregsOut32[p2]) {
-                        scanRegsSUse[p] = false;
-                        scanRegsSUse[p2] = false;
-                        fregsSUseIncompatible[p] = true;
-                        fregsSUseIncompatible[p2] = true;
-                        break;
-                    }
+                if (instr2->fregsDiscardable[p & ~1]) {
+                    break;
+                }
+
+                if (instr2->fregsIn[p & ~1] || instr2->fregsOut[p & ~1]) {
+                    fregsIncompatible[p & ~1] = true;
+                    break;
                 }
             }
- 
-            for (preg_t p : regsToCheckNoSUse | scanRegsNoSUse) {
-                // check if the next instruction that uses it is using it in a different mode
-                for (int j = i + 1; j < code_block->num_instructions; j++) {
-                    struct jit_instr *instr2 = &code_block->instr[j];
-                    preg_t p2 = p;
-                    if (!HOT_STATE->fr_is_set) {
-                        if (p & 1) {
-                            p2 = p2 & ~1;
-                        } else {
-                            p2 = (p2 & ~1) + 1;
-                        }
-                    }
-                    if (instr2->fregsDiscardable[p] || instr2->fregsDiscardable[p2]) {
-                        scanRegsNoSUse[p] = false;
-                        scanRegsNoSUse[p2] = false;
-                        break;
-                    }
-                    if (instr2->fregsIn[p] || instr2->fregsOut[p] || instr2->fregsIn[p2] || instr2->fregsOut[p2]) {
-                        scanRegsNoSUse[p] = false;
-                        scanRegsNoSUse[p2] = false;
-                        fregsSUseIncompatible[p] = true;
-                        fregsSUseIncompatible[p2] = true;
-                        break;
-                    }
-                    if (instr2->fregsIn32[p] || instr2->fregsIn32[p2]) {
-                        if (instr2->has_s && (instr2->s != p && instr2->s != p2)) {
-                            scanRegsNoSUse[p] = true;
-                            scanRegsNoSUse[p2] = true;
-                        } else {
-                            scanRegsNoSUse[p] = false;
-                            scanRegsNoSUse[p2] = false;
-                            fregsSUseIncompatible[p] = true;
-                            fregsSUseIncompatible[p2] = true;
-                        }
-                        break;
-                    }
-                    if (instr2->fregsOut32[p] || instr2->fregsOut32[p2]) {
-                        scanRegsNoSUse[p] = false;
-                        scanRegsNoSUse[p2] = false;
-                        fregsSUseIncompatible[p] = true;
-                        fregsSUseIncompatible[p2] = true;
-                        break;
-                    }
+        //}
+        //
+        // // for each of those float regs that are used as 32
+        //for (preg_t p : instr->fregsOut32) {
+            // check if the next instruction that uses it is using it in a different mode
+            for (int j = i + 1; j < code_block->num_instructions; j++) {
+                preg_t p2;
+                if (p & 1) {
+                    p2 = p & ~1;
+                } else {
+                    p2 = p + 1;
+                }
+
+                struct jit_instr *instr2 = &code_block->instr[j];
+
+                if (instr2->fregsDiscardable[p & ~1]) {
+                    break;
+                }
+
+                // because of flush upper
+                if (instr2->fregsIn32[p2] || instr2->fregsOut32[p2]) {
+                    fregsOverlap[p] = true;
+                    break;
                 }
             }
         }
-#endif
 
         instr->fregsIncompatible = fregsIncompatible;
+        instr->fregsOverlap = fregsOverlap;
         instr->fregsIncompatible32 = fregsIncompatible32;
-        instr->fregsSUseIncompatible = fregsSUseIncompatible;
     }
 
 #ifndef NDEBUG
@@ -2543,7 +2398,7 @@ void VR4300_Jitter::save_discarded_registers_for_core_compare_float(struct jit_i
 {
     for (preg_t k : op->fregsDiscardable) {
         if (m_fpr.IsBound(k) && m_fpr.IsDirty(k)) {
-            RCX64Reg reg = m_fpr.Bind(k, RCMode::Read, m_fpr.Is32BitOnly(k));
+            RCX64Reg reg = m_fpr.Is32BitOnly(k) ? m_fpr.Bind32(k, RCMode::Read) : m_fpr.Bind(k, RCMode::Read);
             RegCache::Realize(reg);
 
             if (m_fpr.Is32BitOnly(k)) {
@@ -2576,7 +2431,7 @@ void VR4300_Jitter::do_core_compare(struct jit_instr *op, u32 pc)
         for (int j = 0; j < 8; j++) {
             int k = i * 8 + j;
             if (m_fpr.IsBound(k) && m_fpr.IsDirty(k)) {
-                RCX64Reg reg = m_fpr.Bind(k, RCMode::Read, m_fpr.Is32BitOnly(k));
+                RCX64Reg reg = m_fpr.Is32BitOnly(k) ? m_fpr.Bind32(k, RCMode::Read) : m_fpr.Bind(k, RCMode::Read);
                 RegCache::Realize(reg);
 
                 if (m_fpr.Is32BitOnly(k)) {
@@ -2895,7 +2750,7 @@ void VR4300_Jitter::compile_INTERPRETER_FALLBACK(struct jit_instr *op, u32 addre
             for (int j = 0; j < 8; j++) {
                 int k = i * 8 + j;
                 if (m_fpr.IsBound(k) && m_fpr.IsDirty(k)) {
-                    RCX64Reg reg = m_fpr.Bind(k, RCMode::Read, m_fpr.Is32BitOnly(k));
+                    RCX64Reg reg = m_fpr.Is32BitOnly(k) ? m_fpr.Bind32(k, RCMode::Read) : m_fpr.Bind(k, RCMode::Read);
                     RegCache::Realize(reg);
 
                     if (m_fpr.Is32BitOnly(k)) {
@@ -2943,7 +2798,7 @@ void VR4300_Jitter::compile_INTERPRETER_FALLBACK(struct jit_instr *op, u32 addre
     ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
 
     if (op) {
-        m_gpr.Reset(op->regsOut);
+        m_gpr.Reset(BiggerBitSet(op->regsOut));
         m_fpr.Reset(op->fregsOut | op->fregsOut32);
     }
 
@@ -3208,7 +3063,7 @@ void VR4300_Jitter::compile_cop2_usable_check(struct jit_instr *op)
     do \
     { \
         VALIDATE_IN(op, r1); \
-        assert(op->has_k); \
+        ASSERT(op->has_k); \
         { \
             RCOpArg Rr1 = op->r1 ? m_gpr.Use(op->r1, RCMode::Read) : RCOpArg::Imm64(0); \
             RegCache::Realize(Rr1); \
@@ -3522,7 +3377,7 @@ void VR4300_Jitter::recompile_ERET(struct jit_instr *op)
 void VR4300_Jitter::recompile_MFC0(struct jit_instr *op)
 {
     VALIDATE_OUT(op, t);
-    assert(op->has_d);
+    ASSERT(op->has_d);
 
     if (op->t) {
         RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::Write);
@@ -3566,7 +3421,7 @@ void VR4300_Jitter::recompile_MFC0(struct jit_instr *op)
 void VR4300_Jitter::recompile_DMFC0(struct jit_instr *op)
 {
     VALIDATE_OUT(op, t);
-    assert(op->has_d);
+    ASSERT(op->has_d);
 
     if (op->t) {
         RCX64Reg Rt = m_gpr.Bind(op->t, RCMode::Write);
@@ -3638,7 +3493,7 @@ void vr4300_jitter_remove_event(int event)
 void VR4300_Jitter::recompile_MTC0(struct jit_instr *op)
 {
     VALIDATE_IN(op, t);
-    assert(op->has_d);
+    ASSERT(op->has_d);
 
     //DebugMessage(M64MSG_VERBOSE, "MTC0 t: %d d: %d\n", op->t, op->d);
 
@@ -4857,7 +4712,7 @@ void VR4300_Jitter::recompile_instruction(struct jit_instr *op)
 void VR4300_Jitter::recompile_delay_slot(struct jit_instr *op, bool skip_instruction)
 {
     bool was_last_instruction = HOT_STATE->isLastInstruction;
-    assert(!HOT_STATE->inDelaySlot);
+    ASSERT(!HOT_STATE->inDelaySlot);
 
     struct jit_instr *old_op = HOT_STATE->op;
     HOT_STATE->instructionsLeft--;
@@ -4907,16 +4762,9 @@ void VR4300_Jitter::recompile_delay_slot(struct jit_instr *op, bool skip_instruc
 #endif
 #endif
 
-        //m_fpr.FlushDifferentUse(op->fregsSUseIncompatible);
-        m_fpr.ConvertTo64(op->fregsIncompatible);
-        m_fpr.ConvertTo32(op->fregsIncompatible32);
-
-        m_gpr.Flush(~op->regsInUse & (op->regsIn | op->regsOut));
-        m_fpr.Flush(~op->fregsInUse & (op->fregsIn | op->fregsOut | op->fregsIn32 | op->fregsOut32));
-
 #ifndef NDEBUG
-        BitSet32 flushfregs = ~op->fregsInUse & (op->fregsIn | op->fregsOut | op->fregsIn32 | op->fregsOut32);
-        if (flushfregs != BitSet32{}) {
+        BitSet64 flushfregs = ~op->fregsInUse & (op->fregsIn | op->fregsOut | op->fregsIn32 | op->fregsOut32);
+        if (flushfregs != BitSet64{}) {
             DebugMessage(M64MSG_VERBOSE, "%s FPR FLUSHDS: ", op->name);
             for (preg_t p : flushfregs) {
                 fprintf(stderr, "%d ", p);
@@ -4924,14 +4772,14 @@ void VR4300_Jitter::recompile_delay_slot(struct jit_instr *op, bool skip_instruc
             fprintf(stderr, "\n");
         }
 
-        if (op->fregsIncompatible != BitSet32{}) {
+        if (op->fregsIncompatible != BitSet64{}) {
             DebugMessage(M64MSG_VERBOSE, "%s INCOMPATIBLEDS: ", op->name);
             for (preg_t p : op->fregsIncompatible) {
                 fprintf(stderr, "%d ", p);
             }
             fprintf(stderr, "\n");
         }
-        if (op->fregsIncompatible32 != BitSet32{}) {
+        if (op->fregsIncompatible32 != BitSet64{}) {
             DebugMessage(M64MSG_VERBOSE, "%s INCOMPATIBLEDS32: ", op->name);
             for (preg_t p : op->fregsIncompatible32) {
                 fprintf(stderr, "%d ", p);
@@ -4955,6 +4803,14 @@ void VR4300_Jitter::recompile_delay_slot(struct jit_instr *op, bool skip_instruc
             DebugMessage(M64MSG_VERBOSE, "%s FPR INDS32 %d\n", op->name, i);
         }
 #endif
+
+        m_gpr.Flush(BiggerBitSet(~op->regsInUse & (op->regsIn | op->regsOut)));
+        m_fpr.Flush(~op->fregsInUse & (op->fregsIn | op->fregsOut | op->fregsIn32 | op->fregsOut32));
+
+        m_fpr.Flush(op->fregsOverlap);
+
+        m_fpr.ConvertTo64(op->fregsIncompatible);
+        m_fpr.ConvertTo32(op->fregsIncompatible32);
 
     } else abort();
 
@@ -5183,29 +5039,14 @@ void *VR4300_Jitter::RecompileBlock(unsigned int addr)
 #if DISABLE_GPR_REG_CACHE
         m_gpr.Flush();
 #else
-        m_gpr.PreloadRegisters(op.regsIn & op.regsInUse & ~op.regsDiscardable, false, false, false);
+        m_gpr.PreloadRegisters(BiggerBitSet(op.regsIn & op.regsInUse & ~op.regsDiscardable));
 #endif
 
 #if DISABLE_FLOAT_REG_CACHE
         m_fpr.Flush();
 #else
-        BitSet32 fregsIn32SUse = BitSet32{};
-        if (op.has_s && op.fregsIn32[op.s]) {
-            fregsIn32SUse[op.s] = true;
-        }
-        BitSet32 fregsIn32DBind = BitSet32{};
-        if (op.has_d && op.fregsOut32[op.d]) {
-            fregsIn32DBind[op.d] = true;
-        }
-        BitSet32 fregsIn32FUse = BitSet32{};
-        if (op.has_t && op.fregsIn32[op.t]) {
-            fregsIn32FUse[op.t] = true;
-        }
-        m_fpr.PreloadRegisters(op.fregsIn & op.fregsInUse & ~op.fregsDiscardable, false, false, false);
-        m_fpr.PreloadRegisters((((op.fregsIn32 & fregsIn32SUse) & fregsIn32FUse) & ~fregsIn32DBind) & op.fregsInUse & ~op.fregsDiscardable, true, true, true);
-        m_fpr.PreloadRegisters((((op.fregsIn32 & fregsIn32SUse) & ~fregsIn32FUse) & ~fregsIn32DBind) & op.fregsInUse & ~op.fregsDiscardable, true, true, false);
-        m_fpr.PreloadRegisters((((op.fregsIn32 & ~fregsIn32SUse) & fregsIn32FUse) & ~fregsIn32DBind) & op.fregsInUse & ~op.fregsDiscardable, true, true, true);
-        m_fpr.PreloadRegisters((((op.fregsIn32 & ~fregsIn32SUse) & ~fregsIn32FUse) & ~fregsIn32DBind) & op.fregsInUse & ~op.fregsDiscardable, true, true, false);
+        m_fpr.PreloadRegisters(op.fregsIn & op.fregsInUse & ~op.fregsDiscardable);
+        m_fpr.PreloadRegisters32(op.fregsIn32 & op.fregsInUse & ~op.fregsDiscardable);
 #endif
 
         embed_valid_block_check(op.address, false);
@@ -5278,7 +5119,7 @@ void *VR4300_Jitter::RecompileBlock(unsigned int addr)
 
 #if !DISABLE_GPR_REG_CACHE
 #if !DISABLE_DISCARD
-        m_gpr.Discard(op.regsDiscardable);
+        m_gpr.Discard(BiggerBitSet(op.regsDiscardable));
 #endif
 #endif
 
@@ -5287,26 +5128,18 @@ void *VR4300_Jitter::RecompileBlock(unsigned int addr)
         m_fpr.Discard(op.fregsDiscardable);
 #endif
 #endif
-        //m_fpr.FlushDifferentUse(op.fregsSUseIncompatible);
+
+        m_gpr.Flush(BiggerBitSet(~op.regsInUse & (op.regsIn | op.regsOut)));
+        m_fpr.Flush(~op.fregsInUse & (op.fregsIn | op.fregsOut | op.fregsIn32 | op.fregsOut32));
+
+        m_fpr.Flush(op.fregsOverlap);
+
         m_fpr.ConvertTo64(op.fregsIncompatible);
         m_fpr.ConvertTo32(op.fregsIncompatible32);
 
-        m_gpr.Flush(~op.regsInUse & (op.regsIn | op.regsOut));
-        m_fpr.Flush(~op.fregsInUse & (op.fregsIn | op.fregsOut | op.fregsIn32 | op.fregsOut32));
-
 #ifndef NDEBUG
-        if (op.fregsSUseIncompatible != BitSet32{}) {
-            DebugMessage(M64MSG_VERBOSE, "%s SUSEINCOMPATIBLE: ", op.name);
-            for (preg_t p : op.fregsSUseIncompatible) {
-                fprintf(stderr, "%d ", p);
-            }
-            fprintf(stderr, "\n");
-        }
-#endif
-
-#ifndef NDEBUG
-        BitSet32 flushfregs = ~op.fregsInUse & (op.fregsIn | op.fregsOut | op.fregsIn32 | op.fregsOut32);
-        if (flushfregs != BitSet32{}) {
+        BitSet64 flushfregs = ~op.fregsInUse & (op.fregsIn | op.fregsOut | op.fregsIn32 | op.fregsOut32);
+        if (flushfregs != BitSet64{}) {
             DebugMessage(M64MSG_VERBOSE, "%s FPR FLUSH: ", op.name);
             for (preg_t p : flushfregs) {
                 fprintf(stderr, "%d ", p);
@@ -5316,14 +5149,14 @@ void *VR4300_Jitter::RecompileBlock(unsigned int addr)
 #endif
 
 #ifndef NDEBUG
-        if (op.fregsIncompatible != BitSet32{}) {
+        if (op.fregsIncompatible != BitSet64{}) {
             DebugMessage(M64MSG_VERBOSE, "%s INCOMPATIBLE: ", op.name);
             for (preg_t p : op.fregsIncompatible) {
                 fprintf(stderr, "%d ", p);
             }
             fprintf(stderr, "\n");
         }
-        if (op.fregsIncompatible32 != BitSet32{}) {
+        if (op.fregsIncompatible32 != BitSet64{}) {
             DebugMessage(M64MSG_VERBOSE, "%s INCOMPATIBLE32: ", op.name);
             for (preg_t p : op.fregsIncompatible32) {
                 fprintf(stderr, "%d ", p);
@@ -5761,7 +5594,7 @@ bool VR4300_Jitter::HandleFault(uintptr_t access_address, SContext* ctx)
 #endif
                 Gen::XEmitter emit(info_it->second.code_before, const_cast<u8*>(info_it->second.code_after));
                 emit.JMP(info_it->second.farcode, XEmitter::Jump::Near);
-                assert(!emit.HasWriteFailed());
+                ASSERT(!emit.HasWriteFailed());
             }
 
             u32 taddr = vr4300_jitter_translate_address_no_exception(address, 2);
@@ -5892,5 +5725,14 @@ void VR4300_Jitter::WriteDestroyBlock(uint8_t *host_entry)
 {
     Gen::XEmitter emit(host_entry, host_entry + 1);
     emit.INT3();
+}
+
+BitSet64 BiggerBitSet(BitSet32 bitset32)
+{
+    BitSet64 out = BitSet64::AllTrue(0);
+    for (preg_t bit : bitset32) {
+        out[bit] = 1;
+    }
+    return out;
 }
 

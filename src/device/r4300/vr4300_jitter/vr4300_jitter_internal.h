@@ -524,5 +524,7 @@ private:
         bool is_address_in_fastmem_arena(const u8* address);
 };
 
+BitSet64 BiggerBitSet(BitSet32 bitset32);
+
 #endif
 

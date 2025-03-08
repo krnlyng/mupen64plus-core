@@ -21,8 +21,6 @@
 #include "../vr4300_jitter.h"
 #include "../vr4300_jitter_instruction_decoder.h"
 
-#include <cassert>
-
 using namespace Gen;
 
 RCOpArg RCOpArg::Imm64(u64 imm)
@@ -300,9 +298,9 @@ RegCache::RegCache()
 void RegCache::Start()
 {
   m_xregs.fill({});
-  for (size_t i = 0; i < m_regs.size(); i++)
+  for (std::array<VR4300CachedReg, 64>::size_type i = 0; i < (is_float ? 64 : 32); i++)
   {
-    m_regs[i] = VR4300CachedReg{GetDefaultLocation(i), GetDefaultLocation32(i), GetDefaultLocation32s(i), GetDefaultLocation32d(i), GetDefaultLocation32f(i)};
+    m_regs[i] = VR4300CachedReg{GetDefaultLocation(i), GetDefaultLocation32(i)};
   }
 }
 
@@ -311,11 +309,16 @@ void RegCache::SetEmitter(XEmitter* emitter)
   m_emitter = emitter;
 }
 
+void RegCache::SetReg0Unusable()
+{
+    is_float = false;
+}
+
 bool RegCache::SanityCheck() const
 {
-  for (std::array<VR4300CachedReg, 32>::size_type i = 0; i < m_regs.size(); i++)
+  for (std::array<VR4300CachedReg, 64>::size_type i = 0; i < (is_float ? 64 : 32); i++)
   {
-    if (!m_reg_0_usable && i == 0 && m_regs[i].GetLocationType() != VR4300CachedReg::LocationType::Default) abort();
+    if (!is_float && (i == 0) && m_regs[i].GetLocationType() != VR4300CachedReg::LocationType::Default) abort();
     switch (m_regs[i].GetLocationType())
     {
     case VR4300CachedReg::LocationType::Default:
@@ -340,50 +343,10 @@ bool RegCache::SanityCheck() const
   return true;
 }
 
-void RegCache::SetReg0Unusable()
-{
-    m_reg_0_usable = false;
-}
-
-RCOpArg RegCache::Use(preg_t preg, RCMode mode, bool only_32bit)
-{
-  if (!m_reg_0_usable && preg == 0) abort();
-  m_constraints[preg].AddUse(mode, only_32bit);
-  return RCOpArg{this, preg};
-}
-
-RCOpArg RegCache::UseS(preg_t preg, RCMode mode, bool only_32bit)
-{
-  if (!m_reg_0_usable && preg == 0) abort();
-  m_constraints[preg].AddUseS(mode, only_32bit);
-  return RCOpArg{this, preg};
-}
-
-RCOpArg RegCache::UseF(preg_t preg, RCMode mode, bool only_32bit)
-{
-  if (!m_reg_0_usable && preg == 0) abort();
-  m_constraints[preg].AddUseF(mode, only_32bit);
-  return RCOpArg{this, preg};
-}
-
-RCOpArg RegCache::UseNoImm(preg_t preg, RCMode mode)
-{
-  if (!m_reg_0_usable && preg == 0) abort();
-  m_constraints[preg].AddUseNoImm(mode);
-  return RCOpArg{this, preg};
-}
-
-RCOpArg RegCache::BindOrImm(preg_t preg, RCMode mode, bool flush_upper)
-{
-  if (!m_reg_0_usable && preg == 0) abort();
-  m_constraints[preg].AddBindOrImm(mode, flush_upper);
-  return RCOpArg{this, preg};
-}
-
 void RegCache::ValidateRCMode(preg_t preg, RCMode mode, bool only_32bit)
 {
-  if (!m_reg_0_usable && preg == 0) abort();
-  if (!m_reg_0_usable) { //gpr
+  if (!is_float && preg == 0) abort();
+  if (!is_float) { //gpr
     if (mode == RCMode::Read) {
       VALIDATE_REG_IN(HOT_STATE->op, preg);
     }
@@ -421,17 +384,79 @@ void RegCache::ValidateRCMode(preg_t preg, RCMode mode, bool only_32bit)
   }
 }
 
-RCX64Reg RegCache::Bind(preg_t preg, RCMode mode, bool only_32bit, bool flush_upper)
+RCOpArg RegCache::Use(preg_t preg, RCMode mode)
 {
-  ValidateRCMode(preg, mode, only_32bit);
-  m_constraints[preg].AddBind(mode, only_32bit, flush_upper);
+  ValidateRCMode(preg, mode, false);
+  if (!is_float && preg == 0) abort();
+  m_constraints[preg].AddUse(mode);
+  return RCOpArg{this, preg};
+}
+
+RCOpArg RegCache::UseNoImm(preg_t preg, RCMode mode)
+{
+  ValidateRCMode(preg, mode, false);
+  if (!is_float && preg == 0) abort();
+  m_constraints[preg].AddUseNoImm(mode);
+  return RCOpArg{this, preg};
+}
+
+RCOpArg RegCache::BindOrImm(preg_t preg, RCMode mode)
+{
+  ValidateRCMode(preg, mode, false);
+  if (!is_float && preg == 0) abort();
+  m_constraints[preg].AddBindOrImm(mode);
+  return RCOpArg{this, preg};
+}
+
+RCX64Reg RegCache::Bind(preg_t preg, RCMode mode)
+{
+  ValidateRCMode(preg, mode, false);
+  m_constraints[preg].AddBind(mode);
   return RCX64Reg{this, preg};
 }
 
-RCX64Reg RegCache::RevertableBind(preg_t preg, RCMode mode, bool only_32bit, bool flush_upper)
+RCX64Reg RegCache::RevertableBind(preg_t preg, RCMode mode)
 {
-  ValidateRCMode(preg, mode, only_32bit);
-  m_constraints[preg].AddRevertableBind(mode, only_32bit, flush_upper);
+  ValidateRCMode(preg, mode, false);
+  m_constraints[preg].AddRevertableBind(mode);
+  return RCX64Reg{this, preg};
+}
+
+RCOpArg RegCache::Use32(preg_t preg, RCMode mode)
+{
+  ValidateRCMode(preg, mode, true);
+  if (!is_float && preg == 0) abort();
+  m_constraints[preg].AddUse32(mode);
+  return RCOpArg{this, preg};
+}
+
+RCOpArg RegCache::Use32NoImm(preg_t preg, RCMode mode)
+{
+  ValidateRCMode(preg, mode, true);
+  if (!is_float && preg == 0) abort();
+  m_constraints[preg].AddUse32NoImm(mode);
+  return RCOpArg{this, preg};
+}
+
+RCOpArg RegCache::Bind32OrImm(preg_t preg, RCMode mode, bool flush_upper)
+{
+  ValidateRCMode(preg, mode, true);
+  if (!is_float && preg == 0) abort();
+  m_constraints[preg].AddBind32OrImm(mode, flush_upper);
+  return RCOpArg{this, preg};
+}
+
+RCX64Reg RegCache::Bind32(preg_t preg, RCMode mode, bool flush_upper)
+{
+  ValidateRCMode(preg, mode, true);
+  m_constraints[preg].AddBind32(mode, flush_upper);
+  return RCX64Reg{this, preg};
+}
+
+RCX64Reg RegCache::RevertableBind32(preg_t preg, RCMode mode, bool flush_upper)
+{
+  ValidateRCMode(preg, mode, true);
+  m_constraints[preg].AddRevertableBind32(mode, flush_upper);
   return RCX64Reg{this, preg};
 }
 
@@ -451,7 +476,7 @@ RCForkGuard RegCache::Fork()
   return RCForkGuard{*this};
 }
 
-void RegCache::Discard(BitSet32 pregs)
+void RegCache::Discard(BitSet64 pregs)
 {
   ASSERT_MSG(
       DYNA_REC,
@@ -465,10 +490,11 @@ void RegCache::Discard(BitSet32 pregs)
     ASSERT_MSG(DYNA_REC, !m_regs[i].IsRevertable(), "Register transaction is in progress for %d!",
                i);
 
-    if (m_reg_0_usable) {
+    if (is_float) {
       if (m_regs[i].FlushUpper())
       {
         fprintf(stderr, "FLUSH UPPER %d\n",i);
+        ASSERT((i & 1) == 0);
         FlushUpper(i);
       }
     }
@@ -483,7 +509,7 @@ void RegCache::Discard(BitSet32 pregs)
   }
 }
 
-void RegCache::ConvertTo64(BitSet32 pregs)
+void RegCache::ConvertTo64(BitSet64 pregs)
 {
   for (preg_t i : pregs)
   {
@@ -506,13 +532,13 @@ void RegCache::ConvertTo64(BitSet32 pregs)
     case VR4300CachedReg::LocationType::Bound:
     case VR4300CachedReg::LocationType::Immediate:
       StoreFromRegister(i);
-      m_regs[i].Set32BitOnly(false);
+      m_regs[i & ~1].Set32BitOnly(false);
       break;
     }
   }
 }
 
-void RegCache::FlushDifferentUse(BitSet32 pregs)
+void RegCache::ConvertTo32(BitSet64 pregs)
 {
   for (preg_t i : pregs)
   {
@@ -535,42 +561,13 @@ void RegCache::FlushDifferentUse(BitSet32 pregs)
     case VR4300CachedReg::LocationType::Bound:
     case VR4300CachedReg::LocationType::Immediate:
       StoreFromRegister(i);
-      m_regs[i].SetIsSUse(false);
+      m_regs[i & ~1].Set32BitOnly(true);
       break;
     }
   }
 }
 
-void RegCache::ConvertTo32(BitSet32 pregs)
-{
-  for (preg_t i : pregs)
-  {
-    ASSERT_MSG(DYNA_REC, !m_regs[i].IsRevertable(), "Register transaction is in progress for %d!",
-               i);
-
-    switch (m_regs[i].GetLocationType())
-    {
-    case VR4300CachedReg::LocationType::Default:
-      break;
-    case VR4300CachedReg::LocationType::Discarded:
-      ASSERT_MSG(DYNA_REC, false, "Attempted to flush discarded VR4300 reg %d", i);
-      break;
-    case VR4300CachedReg::LocationType::SpeculativeImmediate:
-      // We can have a cached value without a host register through speculative constants.
-      // It must be cleared when flushing, otherwise it may be out of sync with VR4300STATE,
-      // if VR4300STATE is modified externally (e.g. fallback to interpreter).
-      m_regs[i].SetFlushed();
-      break;
-    case VR4300CachedReg::LocationType::Bound:
-    case VR4300CachedReg::LocationType::Immediate:
-      StoreFromRegister(i);
-      m_regs[i].Set32BitOnly(true);
-      break;
-    }
-  }
-}
-
-void RegCache::Flush(BitSet32 pregs)
+void RegCache::Flush(BitSet64 pregs)
 {
   ASSERT_MSG(
       DYNA_REC,
@@ -579,6 +576,8 @@ void RegCache::Flush(BitSet32 pregs)
 
   for (preg_t i : pregs)
   {
+    if (!is_float && i >= 32) break;
+
     ASSERT_MSG(DYNA_REC, !m_regs[i].IsLocked(), "Someone forgot to unlock VR4300 reg %d (X64 reg %d).",
                i, Common::ToUnderlying(RX(i)));
     ASSERT_MSG(DYNA_REC, !m_regs[i].IsRevertable(), "Register transaction is in progress for %d!",
@@ -600,12 +599,13 @@ void RegCache::Flush(BitSet32 pregs)
     case VR4300CachedReg::LocationType::Bound:
     case VR4300CachedReg::LocationType::Immediate:
       StoreFromRegister(i);
+      // m_regs[i & ~1].Set32BitOnly(false);
       break;
     }
   }
 }
 
-void RegCache::Reset(BitSet32 pregs)
+void RegCache::Reset(BitSet64 pregs)
 {
   for (preg_t i : pregs)
   {
@@ -643,14 +643,26 @@ bool RegCache::IsAllUnlocked() const
          !IsAnyConstraintActive();
 }
 
-void RegCache::PreloadRegisters(BitSet32 to_preload, bool only32_bit, bool is_s_use, bool is_f_use)
+void RegCache::PreloadRegisters(BitSet64 to_preload)
 {
   for (preg_t preg : to_preload)
   {
     if (NumFreeRegisters() < 2)
       return;
     if (!m_regs[preg].Location().value().IsImm()) {
-      BindToRegister(preg, true, false, only32_bit, false, is_s_use, is_f_use);
+      BindToRegister(preg, true, false, false, false);
+    }
+  }
+}
+
+void RegCache::PreloadRegisters32(BitSet64 to_preload)
+{
+  for (preg_t preg : to_preload)
+  {
+    if (NumFreeRegisters() < 2)
+      return;
+    if (!m_regs[preg].Location().value().IsImm()) {
+      BindToRegister(preg, true, false, true, false);
     }
   }
 }
@@ -687,36 +699,30 @@ void RegCache::DiscardRegContentsIfCached(preg_t preg)
   }
 }
 
-void RegCache::BindToRegister(preg_t i, bool doLoad, bool makeDirty, bool only_32bit, bool flush_upper, bool is_s_use, bool is_f_use)
+void RegCache::BindToRegister(preg_t i, bool doLoad, bool makeDirty, bool only_32bit, bool flush_upper)
 {
 #if 1
     //if (doLoad) {
-    if (m_reg_0_usable) {
+    if (is_float) {
         if (m_regs[i].IsBound()) {
           if (makeDirty)
             m_xregs[RX(i)].MakeDirty();
         }
-        if (m_regs[i].IsBound()) {
-            if (flush_upper != m_regs[i].FlushUpper() && m_regs[i].FlushUpper()) {
-                //FlushUpper(i);
-                FlushDifferentUse(BitSet32{i});
-            }
-            if (is_s_use != m_regs[i].IsSUse()) {
-                FlushDifferentUse(BitSet32{i});
-            }
-            if (is_f_use != m_regs[i].IsFUse()) {
-                FlushDifferentUse(BitSet32{i});
-            }
-        }
         if (doLoad && m_regs[i].IsBound()/* && m_xregs[RX(i)].IsDirty()*/) {
             if (only_32bit && !Is32BitOnly(i)) {
-                ConvertTo32(BitSet32{i});
+                ConvertTo32(BitSet64{i});
             } else if (!only_32bit && Is32BitOnly(i)) {
-                if (m_regs[i].IsSUse()) abort();
-                ConvertTo64(BitSet32{i});
+                ConvertTo64(BitSet64{i});
             }
+#if 0
+            if (only_32bit) {
+                if (i & 1 == 0 && m_regs[i + 1].IsBound()) {
+                    Flush(BitSet64{i + 1});
+                }
+            }
+#endif
         } else {
-            m_regs[i].Set32BitOnly(only_32bit);
+            m_regs[i & ~1].Set32BitOnly(only_32bit);
         }
     }
 #endif
@@ -735,16 +741,16 @@ void RegCache::BindToRegister(preg_t i, bool doLoad, bool makeDirty, bool only_3
     {
       ASSERT_MSG(DYNA_REC, !m_regs[i].IsDiscarded(), "Attempted to load a discarded value");
       if (only_32bit) {
-        LoadRegister32(i, xr, is_s_use, is_f_use);
+        LoadRegister32(i, xr, flush_upper);
       } else {
         LoadRegister(i, xr);
       }
+    } else if (flush_upper) {
+        ASSERT((i & 1) == 0);
+        FlushUpper(i);
     }
 
-    m_regs[i].SetIsSUse(is_s_use);
-    m_regs[i].SetIsFUse(is_f_use);
-    m_regs[i].SetFlushUpper(flush_upper);
-    m_regs[i].Set32BitOnly(only_32bit);
+    m_regs[i & ~1].Set32BitOnly(only_32bit);
 
     ASSERT_MSG(DYNA_REC,
                std::none_of(m_regs.begin(), m_regs.end(),
@@ -761,6 +767,11 @@ void RegCache::BindToRegister(preg_t i, bool doLoad, bool makeDirty, bool only_3
     // and immediates are taken care of above.
     if (makeDirty)
       m_xregs[RX(i)].MakeDirty();
+
+    if (flush_upper && !m_regs[i].FlushUpper()) {
+        ASSERT((i & 1) == 0);
+        FlushUpper(i);
+    }
   }
 
   ASSERT_MSG(DYNA_REC, !m_xregs[RX(i)].IsLocked(),
@@ -769,7 +780,7 @@ void RegCache::BindToRegister(preg_t i, bool doLoad, bool makeDirty, bool only_3
 
 void RegCache::StoreFromRegister(preg_t i, FlushMode mode)
 {
-  if (!m_reg_0_usable && i == 0) abort();
+  if (!is_float && i == 0) abort();
 
   // When a transaction is in progress, allowing the store would overwrite the old value.
   ASSERT_MSG(DYNA_REC, !m_regs[i].IsRevertable(), "Register transaction on %d is in progress!", i);
@@ -799,7 +810,8 @@ void RegCache::StoreFromRegister(preg_t i, FlushMode mode)
   {
     if (Is32BitOnly(i))
     {
-      StoreRegister32(i, m_regs[i].IsFUse() ? GetDefaultLocation32f(i) : (m_regs[i].FlushUpper() ? GetDefaultLocation32d(i) : (m_regs[i].IsSUse() ? GetDefaultLocation32s(i) : GetDefaultLocation32(i))), m_regs[i].FlushUpper());
+      ASSERT(!m_regs[i].FlushUpper() || ((i & 1) == 0));
+      StoreRegister32(i, GetDefaultLocation32(i));
     }
     else
     {
@@ -903,12 +915,6 @@ const OpArg& RegCache::R(preg_t preg) const
 {
   ASSERT_MSG(DYNA_REC, !m_regs[preg].IsDiscarded(), "Discarded register - %d", preg);
   if (Is32BitOnly(preg) && m_regs[preg].GetLocationType() == VR4300CachedReg::LocationType::Default) {
-    if (m_regs[preg].IsFUse()) {
-        return m_regs[preg].DefaultLocation32f();
-    }
-    if (m_regs[preg].IsSUse()) {
-        return m_regs[preg].DefaultLocation32s();
-    }
     return m_regs[preg].DefaultLocation32();
   }
   return m_regs[preg].Location().value();
@@ -947,20 +953,20 @@ void RegCache::UnlockX(X64Reg xr)
 
 bool RegCache::IsRealized(preg_t preg) const
 {
-  if (!m_reg_0_usable && preg == 0) abort();
+  if (!is_float && preg == 0) abort();
   return m_constraints[preg].IsRealized();
 }
 
 bool RegCache::Is32BitOnly(preg_t preg) const
 {
-  if (!m_reg_0_usable && preg == 0) abort();
-  if (!m_reg_0_usable) return false;
-  return m_regs[preg].Is32BitOnly();
+  if (!is_float && preg == 0) abort();
+  if (!is_float) return false;
+  return m_regs[preg & ~1].Is32BitOnly();
 }
 
 void RegCache::Realize(preg_t preg)
 {
-  if (!m_reg_0_usable && preg == 0) abort();
+  if (!is_float && preg == 0) abort();
 
   if (m_constraints[preg].IsRealized())
     return;
@@ -970,11 +976,9 @@ void RegCache::Realize(preg_t preg)
   const bool kill_imm = m_constraints[preg].ShouldKillImmediate();
   const bool kill_mem = m_constraints[preg].ShouldKillMemory();
   const bool flush_upper = m_constraints[preg].ShouldFlushUpper();
-  const bool is_s_use = m_constraints[preg].IsSUse();
-  const bool is_f_use = m_constraints[preg].IsFUse();
 
   const auto do_bind = [&] {
-    BindToRegister(preg, load, dirty, m_constraints[preg].Is32BitOnly(), flush_upper, is_s_use, is_f_use);
+    BindToRegister(preg, load, dirty, m_constraints[preg].Is32BitOnly(), flush_upper);
     m_constraints[preg].Realized(RCConstraint::RealizedLoc::Bound);
   };
 
@@ -994,10 +998,9 @@ void RegCache::Realize(preg_t preg)
       do_bind();
       return;
     }
-    m_regs[preg].Set32BitOnly(m_constraints[preg].Is32BitOnly());
+    m_regs[preg & ~1].Set32BitOnly(m_constraints[preg].Is32BitOnly());
+    ASSERT(!flush_upper || (preg & 1 == 0));
     m_regs[preg].SetFlushUpper(flush_upper);
-    m_regs[preg].SetIsSUse(is_s_use);
-    m_regs[preg].SetIsFUse(is_f_use);
     m_constraints[preg].Realized(RCConstraint::RealizedLoc::Mem);
     return;
   case VR4300CachedReg::LocationType::Discarded:

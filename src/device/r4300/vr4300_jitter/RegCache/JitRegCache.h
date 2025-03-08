@@ -114,7 +114,7 @@ private:
   explicit RCForkGuard(RegCache& rc_);
 
   RegCache* rc;
-  std::array<VR4300CachedReg, 32> m_regs;
+  std::array<VR4300CachedReg, 64> m_regs;
   std::array<X64CachedReg, NUM_XREGS> m_xregs;
 };
 
@@ -158,24 +158,25 @@ public:
   u64 Imm64(preg_t preg) const { return R(preg).Imm64(); }
   s64 SImm64(preg_t preg) const { return R(preg).SImm64(); }
 
-  RCOpArg Use(preg_t preg, RCMode mode, bool only_32bit = false);
-  RCOpArg UseF(preg_t preg, RCMode mode, bool only_32bit = false);
-  RCOpArg UseS(preg_t preg, RCMode mode, bool only_32bit = false);
+  RCOpArg Use(preg_t preg, RCMode mode);
   RCOpArg UseNoImm(preg_t preg, RCMode mode);
-  RCOpArg BindOrImm(preg_t preg, RCMode mode, bool flush_upper = true);
-  RCX64Reg Bind(preg_t preg, RCMode mode, bool only_32bit = false, bool flush_upper = true);
-  RCX64Reg BindS(preg_t preg, RCMode mode, bool only_32bit = false, bool flush_upper = true);
-  RCX64Reg RevertableBind(preg_t preg, RCMode mode, bool only_32bit = false, bool flush_upper = true);
+  RCOpArg BindOrImm(preg_t preg, RCMode mode);
+  RCX64Reg Bind(preg_t preg, RCMode mode);
+  RCX64Reg RevertableBind(preg_t preg, RCMode mode);
   RCX64Reg Scratch();
   RCX64Reg Scratch(Gen::X64Reg xr);
+  RCOpArg Use32(preg_t preg, RCMode mode);
+  RCOpArg Use32NoImm(preg_t preg, RCMode mode);
+  RCOpArg Bind32OrImm(preg_t preg, RCMode mode, bool flush_upper = true);
+  RCX64Reg Bind32(preg_t preg, RCMode mode, bool flush_upper = true);
+  RCX64Reg RevertableBind32(preg_t preg, RCMode mode, bool flush_upper = true);
 
   RCForkGuard Fork();
-  void Discard(BitSet32 pregs);
-  void Flush(BitSet32 pregs = BitSet32::AllTrue(32));
-  void ConvertTo64(BitSet32 pregs);
-  void ConvertTo32(BitSet32 pregs);
-  void FlushDifferentUse(BitSet32 pregs);
-  void Reset(BitSet32 pregs);
+  void Discard(BitSet64 pregs);
+  void Flush(BitSet64 pregs = BitSet64::AllTrue(64));
+  void ConvertTo64(BitSet64 pregs);
+  void ConvertTo32(BitSet64 pregs);
+  void Reset(BitSet64 pregs);
   void Revert();
   void Commit();
   bool Is32BitOnly(preg_t preg) const;
@@ -188,7 +189,8 @@ public:
 
   bool IsAllUnlocked() const;
 
-  void PreloadRegisters(BitSet32 pregs, bool only_32bit, bool is_s_use, bool is_f_use);
+  void PreloadRegisters(BitSet64 pregs);
+  void PreloadRegisters32(BitSet64 pregs);
   BitSet32 RegistersInUse() const;
 
 protected:
@@ -200,23 +202,20 @@ protected:
 
   virtual Gen::OpArg GetDefaultLocation(preg_t preg) const = 0;
   virtual Gen::OpArg GetDefaultLocation32(preg_t preg) const = 0;
-  virtual Gen::OpArg GetDefaultLocation32s(preg_t preg) const = 0;
-  virtual Gen::OpArg GetDefaultLocation32d(preg_t preg) const = 0;
-  virtual Gen::OpArg GetDefaultLocation32f(preg_t preg) const = 0;
   virtual void StoreRegister(preg_t preg, const Gen::OpArg& new_loc) = 0;
   virtual void LoadRegister(preg_t preg, Gen::X64Reg new_loc) = 0;
-  virtual void StoreRegister32(preg_t preg, const Gen::OpArg& new_loc, bool flush_upper) = 0;
-  virtual void LoadRegister32(preg_t preg, Gen::X64Reg new_loc, bool is_s_use, bool is_f_use) = 0;
+  virtual void StoreRegister32(preg_t preg, const Gen::OpArg& new_loc) = 0;
+  virtual void LoadRegister32(preg_t preg, Gen::X64Reg new_loc, bool flush_upper) = 0;
   virtual void FlushUpper(preg_t preg) = 0;
 
   virtual const Gen::X64Reg* GetAllocationOrder(size_t* count) const = 0;
 
-  virtual BitSet32 GetRegUtilization() const = 0;
-  virtual BitSet32 CountRegsIn(preg_t preg, u32 lookahead) const = 0;
+  virtual BitSet64 GetRegUtilization() const = 0;
+  virtual BitSet64 CountRegsIn(preg_t preg, u32 lookahead) const = 0;
 
   void FlushX(Gen::X64Reg reg);
   void DiscardRegContentsIfCached(preg_t preg);
-  void BindToRegister(preg_t preg, bool doLoad, bool makeDirty, bool only_32bit, bool flush_upper, bool is_s_use, bool is_f_use);
+  void BindToRegister(preg_t preg, bool doLoad, bool makeDirty, bool only_32bit, bool flush_upper);
   void StoreFromRegister(preg_t preg, FlushMode mode = FlushMode::Full);
 
   Gen::X64Reg GetFreeXReg();
@@ -236,10 +235,10 @@ protected:
 
   bool IsAnyConstraintActive() const;
 
-  std::array<VR4300CachedReg, 32> m_regs;
+  std::array<VR4300CachedReg, 64> m_regs;
   std::array<X64CachedReg, NUM_XREGS> m_xregs;
-  std::array<RCConstraint, 32> m_constraints;
+  std::array<RCConstraint, 64> m_constraints;
   Gen::XEmitter* m_emitter = nullptr;
-  bool m_reg_0_usable = true;
   BitSet32 m_stolen_regs = BitSet32::AllTrue(0);
+  bool is_float = true;
 };
