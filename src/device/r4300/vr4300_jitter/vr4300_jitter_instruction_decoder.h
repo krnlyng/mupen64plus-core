@@ -51,7 +51,6 @@ struct jit_instr {
     BitSet64 fregsOut32 = BitSet64::AllTrue(0);
     BitSet64 fregsIncompatible = BitSet64::AllTrue(0);
     BitSet64 fregsIncompatible32 = BitSet64::AllTrue(0);
-    BitSet64 fregsOverlap = BitSet64::AllTrue(0);
     bool modifies_count_reg = false;
     bool modifies_status_reg = false;
     // fmt - operand format (float)

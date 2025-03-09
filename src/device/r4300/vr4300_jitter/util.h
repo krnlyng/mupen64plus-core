@@ -24,12 +24,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#warning is this correct
-//#define USE32_S(s) (HOT_STATE->fr_is_set ? (2 * s) : ((2 * ((s) & ~1)) + ((s) & 1)))
-//#define USE32_T(t) (HOT_STATE->fr_is_set ? (2 * t) : (2 * ((t) & ~1)))
-//#define USE32_D(d) (HOT_STATE->fr_is_set ? (2 * d) : (2 * ((d) & ~1)))
-#define USE32_T(t) (HOT_STATE->fr_is_set ? (2 * t) : ((2 * ((t) & ~1)) + ((t) & 1)))
-#define USE32_S(s) (HOT_STATE->fr_is_set ? (2 * s) : (2 * ((s) & ~1)))
+#define USE32_TF(t) (2 * (t))
+#define USE32_TI(t) (HOT_STATE->fr_is_set ? (2 * (t)) : ((2 * ((t) & ~1)) + ((t) & 1)))
+#define USE32_S(s) (HOT_STATE->fr_is_set ? (2 * (s)) : (2 * ((s) & ~1)))
 #define USE32_D(d) (2 * (d))
 
 #define USE64(s) (2 * (s))
@@ -123,9 +120,14 @@ static inline uint32_t vr4300_jitter_rdram_dram_address(uint32_t address)
         my_assert(op, arg, op->has_##arg && (op->fregsIn32[USE32_S(op->arg)])); \
     } while(0)
 
-#define VALIDATE_FIN32T(op, arg) \
+#define VALIDATE_FIN32TF(op, arg) \
     do { \
-        my_assert(op, arg, op->has_##arg && (op->fregsIn32[USE32_T(op->arg)])); \
+        my_assert(op, arg, op->has_##arg && (op->fregsIn32[USE32_TF(op->arg)])); \
+    } while(0)
+
+#define VALIDATE_FIN32TI(op, arg) \
+    do { \
+        my_assert(op, arg, op->has_##arg && (op->fregsIn32[USE32_TI(op->arg)])); \
     } while(0)
 
 #define VALIDATE_FIN32_CONV(op, arg) \
@@ -138,9 +140,14 @@ static inline uint32_t vr4300_jitter_rdram_dram_address(uint32_t address)
         my_assert(op, arg, op->has_##arg && (op->fregsOut32[2 * op->arg])); \
     } while(0)
 
-#define VALIDATE_FOUT32T(op, arg) \
+#define VALIDATE_FOUT32TF(op, arg) \
     do { \
-        my_assert(op, arg, op->has_##arg && (op->fregsOut32[USE32_T(op->arg)])); \
+        my_assert(op, arg, op->has_##arg && (op->fregsOut32[USE32_TF(op->arg)])); \
+    } while(0)
+
+#define VALIDATE_FOUT32TI(op, arg) \
+    do { \
+        my_assert(op, arg, op->has_##arg && (op->fregsOut32[USE32_TI(op->arg)])); \
     } while(0)
 
 #define VALIDATE_REG_IN(op, arg) \

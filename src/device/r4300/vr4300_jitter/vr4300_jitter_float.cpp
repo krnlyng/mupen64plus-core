@@ -93,7 +93,10 @@ void VR4300_Jitter::compile_fpu_reset_cause(struct jit_instr *op)
 void VR4300_Jitter::compile_fpu_reset_exceptions(struct jit_instr *op)
 {
 #ifdef ACCURATE_FPU_BEHAVIOR
+    // TODO: asm impl!
     BitSet32 registers_in_use = caller_saved_registers_in_use();
+    registers_in_use[XMM0 + 16] = true;
+    registers_in_use[XMM1 + 16] = true;
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
     ABI_CallFunctionC(feclearexcept, FE_ALL_EXCEPT);
     ABI_PopRegistersAndAdjustStack(registers_in_use, 0);
@@ -1286,6 +1289,7 @@ bool vr4300_jitter_C_cond_fmt_checks_float(uint32_t* fcr31, int32_t value, int32
 
 void VR4300_Jitter::compile_C_cond_fmt_checks(struct jit_instr *op, bool cf, bool is_double, bool quiet)
 {
+#ifdef ACCURATE_FPU_BEHAVIOR
     // TODO: asm impl
     BitSet32 registers_in_use = caller_saved_registers_in_use();
     ABI_PushRegistersAndAdjustStack(registers_in_use, 0);
@@ -1311,6 +1315,17 @@ void VR4300_Jitter::compile_C_cond_fmt_checks(struct jit_instr *op, bool cf, boo
     MOV(32, HOTSTATE_CP0REG(CP0_CAUSE_REG), Imm32(CP0_CAUSE_EXCCODE_FPE));
     compile_exception_general(op);
     SetJumpTarget(neq);
+#else
+    if (cf) {
+        OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CMP_BIT));
+    } else {
+        AND(32, HOTSTATE_VAR(cp1_fcr31), Imm32(~FCR31_CMP_BIT));
+    }
+    if (!quiet) {
+        OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_CAUSE_INVALIDOP_BIT));
+        OR(32, HOTSTATE_VAR(cp1_fcr31), Imm32(FCR31_FLAG_INVALIDOP_BIT));
+    }
+#endif
 }
 
 void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
@@ -1318,7 +1333,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
     assert(op->has_c);
     assert(op->has_a);
     if (op->a == 0x10 || op->a == 0x14) {
-        VALIDATE_FIN32T(op, t);
+        VALIDATE_FIN32TF(op, t);
         VALIDATE_FIN32S(op, s);
     } else {
         VALIDATE_FIN(op, t);
@@ -1342,7 +1357,7 @@ void VR4300_Jitter::recompile_C_cond_fmt(struct jit_instr *op, int fmt)
     }
 
     {
-        RCOpArg Rt = !is_double ? m_fpr.Use32(USE32_T(op->t), RCMode::Read) : m_fpr.Use(USE64(op->t), RCMode::Read);
+        RCOpArg Rt = !is_double ? m_fpr.Use32(USE32_TF(op->t), RCMode::Read) : m_fpr.Use(USE64(op->t), RCMode::Read);
         RegCache::Realize(Rt);
 
         if (is_double) {
@@ -2182,11 +2197,11 @@ void VR4300_Jitter::recompile_CVT_D_L(struct jit_instr *op)
 void VR4300_Jitter::recompile_MUL_S(struct jit_instr *op)
 {
     VALIDATE_FIN32S(op, s);
-    VALIDATE_FIN32T(op, t);
+    VALIDATE_FIN32TF(op, t);
     VALIDATE_FOUT32(op, d);
 
     {
-        RCOpArg Rt = m_fpr.Use32(USE32_T(op->t), RCMode::Read);
+        RCOpArg Rt = m_fpr.Use32(USE32_TF(op->t), RCMode::Read);
         RCOpArg Rs = m_fpr.Use32(USE32_S(op->s), RCMode::Read);
         RegCache::Realize(Rs, Rt);
 
@@ -2252,11 +2267,11 @@ void VR4300_Jitter::recompile_MUL_D(struct jit_instr *op)
 void VR4300_Jitter::recompile_DIV_S(struct jit_instr *op)
 {
     VALIDATE_FIN32S(op, s);
-    VALIDATE_FIN32T(op, t);
+    VALIDATE_FIN32TF(op, t);
     VALIDATE_FOUT32(op, d);
 
     {
-        RCOpArg Rt = m_fpr.Use32(USE32_T(op->t), RCMode::Read);
+        RCOpArg Rt = m_fpr.Use32(USE32_TF(op->t), RCMode::Read);
         RCOpArg Rs = m_fpr.Use32(USE32_S(op->s), RCMode::Read);
         RegCache::Realize(Rs, Rt);
 
@@ -2320,11 +2335,11 @@ void VR4300_Jitter::recompile_DIV_D(struct jit_instr *op)
 void VR4300_Jitter::recompile_ADD_S(struct jit_instr *op)
 {
     VALIDATE_FIN32S(op, s);
-    VALIDATE_FIN32T(op, t);
+    VALIDATE_FIN32TF(op, t);
     VALIDATE_FOUT32(op, d);
 
     {
-        RCOpArg Rt = m_fpr.Use32(USE32_T(op->t), RCMode::Read);
+        RCOpArg Rt = m_fpr.Use32(USE32_TF(op->t), RCMode::Read);
         RCOpArg Rs = m_fpr.Use32(USE32_S(op->s), RCMode::Read);
         RegCache::Realize(Rs, Rt);
         MOVSS(XMM0, Rs);
@@ -2414,11 +2429,11 @@ void VR4300_Jitter::recompile_ABS_D(struct jit_instr *op)
 void VR4300_Jitter::recompile_SUB_S(struct jit_instr *op)
 {
     VALIDATE_FIN32S(op, s);
-    VALIDATE_FIN32T(op, t);
+    VALIDATE_FIN32TF(op, t);
     VALIDATE_FOUT32(op, d);
 
     {
-        RCOpArg Rt = m_fpr.Use32(USE32_T(op->t), RCMode::Read);
+        RCOpArg Rt = m_fpr.Use32(USE32_TF(op->t), RCMode::Read);
         RCOpArg Rs = m_fpr.Use32(USE32_S(op->s), RCMode::Read);
         RegCache::Realize(Rs, Rt);
 
@@ -2694,10 +2709,10 @@ void VR4300_Jitter::store_host_register_to_cop1_register(struct jit_instr *op, i
     } else abort();
 }
 
-void VR4300_Jitter::store_host_register_to_cop1_register(struct jit_instr *op, int bits, const RCOpArg &cpu_val, int reg, bool flush_upper)
+void VR4300_Jitter::store_host_register_to_cop1_register(struct jit_instr *op, int bits, const RCOpArg &cpu_val, int reg, bool flush_upper, bool integer_usage)
 {
     if (bits == 32) {
-        RCX64Reg Rt = m_fpr.Bind32(USE32_T(reg), RCMode::Write, flush_upper);
+        RCX64Reg Rt = m_fpr.Bind32(integer_usage ? USE32_TI(reg) : USE32_TF(reg), RCMode::Write, flush_upper);
         RegCache::Realize(Rt);
 
         store_host_register_to_cop1_register(op, bits, cpu_val, Rt);
@@ -2731,10 +2746,10 @@ void VR4300_Jitter::load_cop1_register_to_host_register(struct jit_instr *op, in
     } else abort();
 }
 
-void VR4300_Jitter::load_cop1_register_to_host_register(struct jit_instr *op, int bits, int reg, const RCX64Reg &target)
+void VR4300_Jitter::load_cop1_register_to_host_register(struct jit_instr *op, int bits, int reg, const RCX64Reg &target, bool integer_usage)
 {
     if (bits == 32) {
-        RCOpArg Rt = m_fpr.Use32(USE32_T(reg), RCMode::Read);
+        RCOpArg Rt = m_fpr.Use32(integer_usage ? USE32_TI(reg) : USE32_TF(reg), RCMode::Read);
         RegCache::Realize(Rt);
 
         load_cop1_register_to_host_register(op, bits, Rt, target);
@@ -2763,7 +2778,7 @@ void VR4300_Jitter::load_cop1_register_to_host_register_s(struct jit_instr *op, 
 
 void VR4300_Jitter::recompile_SWC1(struct jit_instr *op)
 {
-    VALIDATE_FIN32T(op, t);
+    VALIDATE_FIN32TI(op, t);
     VALIDATE_IN(op, b);
     assert(op->has_f);
 
@@ -2776,7 +2791,7 @@ void VR4300_Jitter::recompile_SWC1(struct jit_instr *op)
         RCX64Reg out_reg = m_gpr.Scratch();
         RegCache::Realize(out_reg);
 
-        load_cop1_register_to_host_register(op, 32, op->t, out_reg);
+        load_cop1_register_to_host_register(op, 32, op->t, out_reg, true);
 
         if (vr4300_jitter_is_rdram_address(address)) {
             MOV(32, MDisp(RDRAM, vr4300_jitter_rdram_dram_address(address & ~3)), R(out_reg));
@@ -2815,7 +2830,7 @@ void VR4300_Jitter::recompile_SWC1(struct jit_instr *op)
         }
 #endif
 
-        load_cop1_register_to_host_register(op, 32, op->t, out_reg);
+        load_cop1_register_to_host_register(op, 32, op->t, out_reg, true);
 
 #if !DISABLE_FASTMEM
         u8 *mov_address = GetWritableCodePtr();
@@ -2861,7 +2876,7 @@ void VR4300_Jitter::recompile_SWC1(struct jit_instr *op)
 
 void VR4300_Jitter::recompile_LWC1(struct jit_instr *op)
 {
-    VALIDATE_FOUT32T(op, t);
+    VALIDATE_FOUT32TI(op, t);
     VALIDATE_IN(op, b);
     assert(op->has_f);
 
@@ -2934,7 +2949,7 @@ void VR4300_Jitter::recompile_LWC1(struct jit_instr *op)
     }
 
     // LWC1 does not change the upper bits
-    store_host_register_to_cop1_register(op, 32, RCOpArg::R(ABI_RETURN), op->t, false);
+    store_host_register_to_cop1_register(op, 32, RCOpArg::R(ABI_RETURN), op->t, false, true);
 }
 
 void VR4300_Jitter::recompile_LDC1(struct jit_instr *op)
@@ -3128,17 +3143,17 @@ void VR4300_Jitter::recompile_SDC1(struct jit_instr *op)
 void VR4300_Jitter::recompile_MTC1(struct jit_instr *op)
 {
     VALIDATE_IN(op, t);
-    VALIDATE_FOUT32T(op, s);
+    VALIDATE_FOUT32TI(op, s);
 
     // MTC1 does not change the upper bits
     if (op->t) {
-        RCX64Reg Rd = m_fpr.Bind32(USE32_T(op->s), RCMode::Write, false);
+        RCX64Reg Rd = m_fpr.Bind32(USE32_TI(op->s), RCMode::Write, false);
         RCOpArg Rt = m_gpr.Use(op->t, RCMode::Read);
         RegCache::Realize(Rt, Rd);
 
         store_host_register_to_cop1_register(op, 32, Rt, Rd);
     } else {
-        RCX64Reg Rd = m_fpr.Bind32(USE32_T(op->s), RCMode::Write, false);
+        RCX64Reg Rd = m_fpr.Bind32(USE32_TI(op->s), RCMode::Write, false);
         RegCache::Realize(Rd);
         store_host_register_to_cop1_register(op, 32, RCOpArg::Imm64(0), Rd);
     }
@@ -3165,7 +3180,7 @@ void VR4300_Jitter::recompile_DMTC1(struct jit_instr *op)
 
 void VR4300_Jitter::recompile_MFC1(struct jit_instr *op)
 {
-    VALIDATE_FIN32T(op, s);
+    VALIDATE_FIN32TI(op, s);
     VALIDATE_OUT(op, t);
 
     if (op->t) {
@@ -3173,7 +3188,7 @@ void VR4300_Jitter::recompile_MFC1(struct jit_instr *op)
         RegCache::Realize(Rt);
 
         // Note not using _s here for compat.
-        load_cop1_register_to_host_register(op, 32, op->s, Rt);
+        load_cop1_register_to_host_register(op, 32, op->s, Rt, true);
     }
 }
 

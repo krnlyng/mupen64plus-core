@@ -493,7 +493,6 @@ void RegCache::Discard(BitSet64 pregs)
     if (is_float) {
       if (m_regs[i].FlushUpper())
       {
-        fprintf(stderr, "FLUSH UPPER %d\n",i);
         ASSERT((i & 1) == 0);
         FlushUpper(i);
       }
@@ -532,7 +531,9 @@ void RegCache::ConvertTo64(BitSet64 pregs)
     case VR4300CachedReg::LocationType::Bound:
     case VR4300CachedReg::LocationType::Immediate:
       StoreFromRegister(i);
-      m_regs[i & ~1].Set32BitOnly(false);
+      if (!m_regs[(i & 1) ? (i & ~1) : (i + 1)].IsBound()) {
+        m_regs[i & ~1].Set32BitOnly(false);
+      }
       break;
     }
   }
@@ -573,7 +574,6 @@ void RegCache::Flush(BitSet64 pregs)
       DYNA_REC,
       std::none_of(m_xregs.begin(), m_xregs.end(), [](const auto& x) { return x.IsLocked(); }),
       "Someone forgot to unlock a X64 reg");
-
   for (preg_t i : pregs)
   {
     if (!is_float && i >= 32) break;
@@ -701,31 +701,28 @@ void RegCache::DiscardRegContentsIfCached(preg_t preg)
 
 void RegCache::BindToRegister(preg_t i, bool doLoad, bool makeDirty, bool only_32bit, bool flush_upper)
 {
-#if 1
-    //if (doLoad) {
-    if (is_float) {
-        if (m_regs[i].IsBound()) {
-          if (makeDirty)
-            m_xregs[RX(i)].MakeDirty();
-        }
-        if (doLoad && m_regs[i].IsBound()/* && m_xregs[RX(i)].IsDirty()*/) {
-            if (only_32bit && !Is32BitOnly(i)) {
-                ConvertTo32(BitSet64{i});
-            } else if (!only_32bit && Is32BitOnly(i)) {
-                ConvertTo64(BitSet64{i});
-            }
-#if 0
-            if (only_32bit) {
-                if (i & 1 == 0 && m_regs[i + 1].IsBound()) {
-                    Flush(BitSet64{i + 1});
-                }
-            }
-#endif
-        } else {
-            m_regs[i & ~1].Set32BitOnly(only_32bit);
-        }
-    }
-#endif
+  if (is_float) {
+      if (m_regs[i].IsBound()) {
+        if (makeDirty)
+          m_xregs[RX(i)].MakeDirty();
+      }
+
+      if (((i & 1) == 0) && flush_upper && m_regs[i + 1].IsBound()) {
+        // TODO?
+        ASSERT(false);
+      }
+
+
+      if (doLoad && m_regs[i].IsBound()) {
+          if (only_32bit && !Is32BitOnly(i)) {
+              ConvertTo32(BitSet64{i & ~1});
+          } else if (!only_32bit && Is32BitOnly(i)) {
+              ConvertTo64(BitSet64{i});
+          }
+      } else {
+          m_regs[i & ~1].Set32BitOnly(only_32bit);
+      }
+  }
 
   if (!m_regs[i].IsBound())
   {
@@ -999,7 +996,7 @@ void RegCache::Realize(preg_t preg)
       return;
     }
     m_regs[preg & ~1].Set32BitOnly(m_constraints[preg].Is32BitOnly());
-    ASSERT(!flush_upper || (preg & 1 == 0));
+    ASSERT(!flush_upper || ((preg & 1) == 0));
     m_regs[preg].SetFlushUpper(flush_upper);
     m_constraints[preg].Realized(RCConstraint::RealizedLoc::Mem);
     return;

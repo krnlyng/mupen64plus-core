@@ -75,7 +75,6 @@ public:
     ASSERT(!revertable);
     away = false;
     location = std::nullopt;
-    only_32_bit = false;
   }
 
   void SetFlushed()
@@ -83,7 +82,6 @@ public:
     ASSERT(!revertable);
     away = false;
     location = default_location;
-    only_32_bit = false;
   }
 
   void SetToImm64(u64 imm64, bool dirty = true)
