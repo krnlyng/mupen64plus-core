@@ -1012,8 +1012,8 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
                    instr->fregsIn32[USE32_S(instr->s)] = 1;
                    instr->fregsIn32[USE32_TF(instr->t)] = 1;
                 } else {
-                    instr->fregsIn[USE64(HOT_STATE->fr_is_set ? instr->s : (instr->s & ~1))] = 1;
-                    instr->fregsIn[USE64(instr->t)] = 1;
+                    instr->fregsIn[USE64_S(instr->s)] = 1;
+                    instr->fregsIn[USE64_TF(instr->t)] = 1;
                 }
             } else found = -100;
             found++;
@@ -1036,16 +1036,14 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
         if (instr->has_t && instr->has_s && instr->has_d) {
             if (is_float) {
                 ASSERT(instr->has_a);
-                bool ignore_low_bit = (strlen(instr->name) >= 2 && instr->name[strlen(instr->name) - 2] == '_' && instr->name[strlen(instr->name) - 1] == 'D' && !HOT_STATE->fr_is_set);
-
                 if (instr->a == 0x10 || instr->a == 0x14)  {
                     instr->fregsOut32[USE32_D(instr->d)] = 1;
-                    instr->fregsIn32[USE32_S(instr->s & (ignore_low_bit ? ~1 : ~0))] = 1;
+                    instr->fregsIn32[USE32_S(instr->s)] = 1;
                     instr->fregsIn32[USE32_TF(instr->t)] = 1;
                 } else if (instr->a == 0x11 || instr->a == 0x15)  {
-                    instr->fregsOut[USE64(instr->d)] = 1;
-                    instr->fregsIn[USE64(instr->s & (ignore_low_bit ? ~1 : ~0))] = 1;
-                    instr->fregsIn[USE64(instr->t)] = 1;
+                    instr->fregsOut[USE64_DF(instr->d)] = 1;
+                    instr->fregsIn[USE64_S(instr->s)] = 1;
+                    instr->fregsIn[USE64_TF(instr->t)] = 1;
                 } else abort();
             } else {
                 instr->regsOut[instr->d] = 1;
@@ -1061,15 +1059,13 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
                     // MTC1, CTC1
                     instr->regsIn[instr->t] = 1;
                     if (strncmp(instr->name, "DMT", 3) == 0) {
-                        int out_reg = (instr->x == 1) ? instr->s : instr->d;
-                        if (!HOT_STATE->fr_is_set) {
-                            instr->fregsOut[USE64(out_reg & ~1)] = 1;
-                        } else {
-                            instr->fregsOut[USE64(out_reg)] = 1;
+                        if (instr->x == 1) {
+                            instr->fregsOut[USE64_S(instr->s)] = 1;
                         }
                     } else if (strncmp(instr->name, "MT", 2) == 0) {
-                        int out_reg = (instr->x == 1) ? USE32_TI(instr->s) : USE32_D(instr->d);
-                        instr->fregsOut32[out_reg] = 1;
+                        if (instr->x == 1) {
+                            instr->fregsOut32[USE32_TI(instr->s)] = 1;
+                        }
                     }
                 } else {
                     // MFC1, CFC1
@@ -1080,11 +1076,8 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
                         int out_reg = (instr->x == 1) ? USE32_TF(instr->s) : USE32_D(instr->d);
                         instr->fregsIn32[out_reg] = 1;
                     } else if (strncmp(instr->name, "DMF", 3) == 0 || strncmp(instr->name, "DCF", 3) == 0) {
-                        int out_reg = (instr->x == 1) ? instr->s : instr->d;
-                        if (!HOT_STATE->fr_is_set) {
-                            instr->fregsIn[USE64(out_reg & ~1)] = 1;
-                        } else {
-                            instr->fregsIn[USE64(out_reg)] = 1;
+                        if (instr->x == 1) {
+                            instr->fregsIn[USE64_S(instr->s)] = 1;
                         }
                     }
                     instr->regsOut[instr->t] = 1;
@@ -1137,21 +1130,13 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
             if (is_float) {
                 if (is_load) {
                     if (instr->name[1] == 'D') {
-                        if (!HOT_STATE->fr_is_set) {
-                            instr->fregsOut[USE64(instr->t & ~1)] = 1;
-                        } else {
-                            instr->fregsOut[USE64(instr->t)] = 1;
-                        }
+                        instr->fregsOut[USE64_TI(instr->t)] = 1;
                     } else if (instr->name[1] == 'W') {
                         instr->fregsOut32[USE32_TI(instr->t)] = 1;
                     } else found = 555;
                 } else {
                     if (instr->name[1] == 'D') {
-                        if (!HOT_STATE->fr_is_set) {
-                            instr->fregsIn[USE64(instr->t & ~1)] = 1;
-                        } else {
-                            instr->fregsIn[USE64(instr->t)] = 1;
-                        }
+                        instr->fregsIn[USE64_TI(instr->t)] = 1;
                     } else if (instr->name[1] == 'W') {
                         instr->fregsIn32[USE32_TI(instr->t)] = 1;
                     } else found = 556;
@@ -1213,30 +1198,33 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
 
         if (instr->has_s && instr->has_d && !instr->has_t && instr->has_a) {
             if (is_float) {
-                bool ignore_low_bit = false;
                 ASSERT(instr->has_a);
                 if (strcmp(instr->name, "MOV_S") == 0) {
                     // MOV_S behaves like MOV_D
-                    instr->fregsOut[USE64(instr->d)] = 1;
-                    instr->fregsIn[USE64(HOT_STATE->fr_is_set ? instr->s : (instr->s & ~1))] = 1;
+                    instr->fregsOut[USE64_DF(instr->d)] = 1;
+                    instr->fregsIn[USE64_S(instr->s)] = 1;
                 } else {
-                    if (strncmp(instr->name, "CVT", 3) == 0
-                        || strncmp(instr->name, "ROUND", 5) == 0
-                        || strncmp(instr->name, "TRUNC", 5) == 0
-                        || strncmp(instr->name, "CEIL", 4) == 0
-                        || strncmp(instr->name, "FLOOR", 5) == 0
-                        || (strlen(instr->name) >= 2 && instr->name[strlen(instr->name) - 2] == '_' && instr->name[strlen(instr->name) - 1] == 'D' && !HOT_STATE->fr_is_set)
-                        ) {
-                        ignore_low_bit = true;
-                    }
                     bool out_32 = false;
+                    bool fixed_point = false;
                     if (strlen(instr->name) >= 4 && instr->name[strlen(instr->name) - 2] == '_' && instr->name[strlen(instr->name) - 4] == '_') {
+                        if (instr->name[strlen(instr->name) - 3] == 'W' || instr->name[strlen(instr->name) - 3] == 'L') {
+                            fixed_point = true;
+                        } else if (instr->name[strlen(instr->name) - 3] == 'S' || instr->name[strlen(instr->name) - 3] == 'D') {
+                            fixed_point = false;
+                        } else abort();
+
                         if (instr->name[strlen(instr->name) - 3] == 'L' || instr->name[strlen(instr->name) - 3] == 'D') {
                             out_32 = false;
                         } else if (instr->name[strlen(instr->name) - 3] == 'S' || instr->name[strlen(instr->name) - 3] == 'W') {
                             out_32 = true;
                         } else abort();
                     } else {
+                        if (instr->a == 0x10 || instr->a == 0x11) {
+                            fixed_point = false;
+                        } else if (instr->a == 0x14 || instr->a == 0x15) {
+                            fixed_point = true;
+                        } else abort();
+
                         if (instr->a == 0x10 || instr->a == 0x14) {
                             out_32 = true;
                         } else if (instr->a == 0x11 || instr->a == 0x15) {
@@ -1244,12 +1232,12 @@ void VR4300_Jitter::set_instruction_stats(struct jit_instr *instr)
                         } else abort();
                     }
                     if (instr->a == 0x10 || instr->a == 0x14) {
-                        instr->fregsIn32[USE32_S(instr->s & (ignore_low_bit ? ~1 : ~0))] = 1;
+                        instr->fregsIn32[USE32_S(instr->s)] = 1;
                         if (out_32) instr->fregsOut32[USE32_D(instr->d)] = 1;
-                        else instr->fregsOut[USE64(instr->d)] = 1;
+                        else instr->fregsOut[fixed_point ? USE64_DI(instr->d) : USE64_DF(instr->d)] = 1;
                     } else if (instr->a == 0x11 || instr->a == 0x15) {
-                        instr->fregsIn[USE64(instr->s & (ignore_low_bit ? ~1 : ~0))] = 1;
-                        if (!out_32) instr->fregsOut[USE64(instr->d)] = 1;
+                        instr->fregsIn[USE64_S(instr->s)] = 1;
+                        if (!out_32) instr->fregsOut[fixed_point ? USE64_DI(instr->d) : USE64_DF(instr->d)] = 1;
                         else instr->fregsOut32[USE32_D(instr->d)] = 1;
                     } else abort();
                 }

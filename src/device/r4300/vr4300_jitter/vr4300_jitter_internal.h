@@ -276,7 +276,7 @@ private:
         void load_cop1_register_to_host_register_s(struct jit_instr *op, int bits, int reg, const RCX64Reg &target);
         void store_host_register_to_cop1_register(struct jit_instr *op, int bits, const RCOpArg &cpu_val, const RCX64Reg &Rt);
         void store_host_register_to_cop1_register(struct jit_instr *op, int bits, const RCOpArg &cpu_val, int reg, bool flush_upper = true, bool integer_usage = false);
-        void store_host_register_to_cop1_register_s(struct jit_instr *op, int bits, const RCOpArg &cpu_val, int reg, bool flush_upper = true);
+        void store_host_register_to_cop1_register_s(struct jit_instr *op, int bits, const RCOpArg &cpu_val, int reg);
 
         void recompile_LW(struct jit_instr *op, bool unsigned_lw = false);
         void recompile_LWU(struct jit_instr *op);

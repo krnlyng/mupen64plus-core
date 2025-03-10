@@ -711,6 +711,10 @@ void RegCache::BindToRegister(preg_t i, bool doLoad, bool makeDirty, bool only_3
         // TODO?
         ASSERT(false);
       }
+      if (((i & 1) == 1) && flush_upper && m_regs[i & ~1].IsBound()) {
+        // TODO?
+        ASSERT(false);
+      }
 
 
       if (doLoad && m_regs[i].IsBound()) {

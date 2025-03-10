@@ -29,7 +29,11 @@
 #define USE32_S(s) (HOT_STATE->fr_is_set ? (2 * (s)) : (2 * ((s) & ~1)))
 #define USE32_D(d) (2 * (d))
 
-#define USE64(s) (2 * (s))
+#define USE64_S(s) (HOT_STATE->fr_is_set ? (2 * (s)) : (2 * ((s) & ~1)))
+#define USE64_TI(t) (HOT_STATE->fr_is_set ? (2 * (t)) : (2 * ((t) & ~1)))
+#define USE64_TF(t) (2 * (t))
+#define USE64_DI(d) (2 * (d))
+#define USE64_DF(d) USE64_TF(d)
 
 static inline int vr4300_jitter_value_fits_in_32_bit_imm_positive(uint64_t value)
 {
@@ -80,39 +84,44 @@ static inline uint32_t vr4300_jitter_rdram_dram_address(uint32_t address)
         my_assert(op, arg, op->has_##arg && (op->regsOut[op->arg] || !op->arg)); \
     } while(0)
 
-#define VALIDATE_FIN(op, arg) \
+#define VALIDATE_FINS(op, arg) \
     do { \
-        my_assert(op, arg, op->has_##arg && (op->fregsIn[2 * op->arg])); \
+        my_assert(op, arg, op->has_##arg && (op->fregsIn[USE64_S(op->arg)])); \
     } while(0)
 
-#define VALIDATE_FIN_S(op, arg) \
+#define VALIDATE_FINTF(op, arg) \
     do { \
-        my_assert(op, arg, op->has_##arg && (op->fregsIn[2 * (HOT_STATE->fr_is_set ? op->arg : ((op->arg & ~1)))])); \
+        my_assert(op, arg, op->has_##arg && (op->fregsIn[USE64_TF(op->arg)])); \
     } while(0)
 
-#define VALIDATE_FIN_CONV(op, arg) \
+#define VALIDATE_FINTI(op, arg) \
     do { \
-        my_assert(op, arg, op->has_##arg && (op->fregsIn[2 * (op->arg & ~1)])); \
+        my_assert(op, arg, op->has_##arg && (op->fregsIn[USE64_TI(op->arg)])); \
     } while(0)
 
-#define VALIDATE_FIN_DOUBLE_NO_FR(op, arg) \
+#define VALIDATE_FOUTDF(op, arg) \
     do { \
-        my_assert(op, arg, op->has_##arg && (op->fregsIn[2 * (op->arg & ~1)])); \
+        my_assert(op, arg, op->has_##arg && (op->fregsOut[USE64_DF(op->arg)])); \
     } while(0)
 
-#define VALIDATE_FOUT(op, arg) \
+#define VALIDATE_FOUTDI(op, arg) \
     do { \
-        my_assert(op, arg, op->has_##arg && (op->fregsOut[2 * op->arg])); \
+        my_assert(op, arg, op->has_##arg && (op->fregsOut[USE64_DI(op->arg)])); \
     } while(0)
 
-#define VALIDATE_FOUT_DOUBLE_NO_FR(op, arg) \
+#define VALIDATE_FOUTTI(op, arg) \
     do { \
-        my_assert(op, arg, op->has_##arg && (op->fregsOut[2 * (op->arg & ~1)])); \
+        my_assert(op, arg, op->has_##arg && (op->fregsOut[USE64_TI(op->arg)])); \
     } while(0)
 
-#define VALIDATE_FIN32(op, arg) \
+#define VALIDATE_FOUTTF(op, arg) \
     do { \
-        my_assert(op, arg, op->has_##arg && (op->fregsIn32[2 * op->arg])); \
+        my_assert(op, arg, op->has_##arg && (op->fregsOut[USE64_TF(op->arg)])); \
+    } while(0)
+
+#define VALIDATE_FOUTS(op, arg) \
+    do { \
+        my_assert(op, arg, op->has_##arg && (op->fregsOut[USE64_S(op->arg)])); \
     } while(0)
 
 #define VALIDATE_FIN32S(op, arg) \
@@ -132,12 +141,12 @@ static inline uint32_t vr4300_jitter_rdram_dram_address(uint32_t address)
 
 #define VALIDATE_FIN32_CONV(op, arg) \
     do { \
-        my_assert(op, arg, op->has_##arg && (op->fregsIn32[USE32_S(op->arg)])); \
+        my_assert(op, arg, op->has_##arg && (op->fregsIn32[USE32_S(op->arg & ~1)])); \
     } while(0)
 
 #define VALIDATE_FOUT32(op, arg) \
     do { \
-        my_assert(op, arg, op->has_##arg && (op->fregsOut32[2 * op->arg])); \
+        my_assert(op, arg, op->has_##arg && (op->fregsOut32[USE32_D(op->arg)])); \
     } while(0)
 
 #define VALIDATE_FOUT32TF(op, arg) \
